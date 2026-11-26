@@ -67,10 +67,21 @@ textarea{min-height:80px}
 .addph{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;height:100%;color:var(--leaf);font-weight:700;text-align:center;padding:16px}
 .addph:focus-visible{outline:3px solid var(--sun);outline-offset:-3px}
 .addph span{font-size:34px;line-height:1}
-.sides{display:flex;gap:10px;margin:10px 0 18px}
-.sides button{flex:1;display:flex;align-items:center;gap:10px;min-height:54px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:600 15px Figtree,sans-serif;padding:5px 10px 5px 5px;cursor:pointer;text-align:left}
-.sides button.on{border-color:var(--leaf);box-shadow:inset 0 0 0 1px var(--leaf)}
 .mini{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--leafbg);flex:none;display:flex;align-items:center;justify-content:center;color:var(--leaf);font-size:22px}
+.gal{position:relative;border-radius:18px;overflow:hidden;background:var(--leafbg)}
+.galmain{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;aspect-ratio:4/3;max-height:min(62vh,480px);width:100%}
+.galmain::-webkit-scrollbar{display:none}.galmain:focus-visible{outline:3px solid var(--sun);outline-offset:-3px}
+.galmain figure{flex:0 0 100%;min-width:0;margin:0;scroll-snap-align:center;position:relative;display:flex;align-items:center;justify-content:center}
+.galmain img{width:100%;height:100%;object-fit:contain;cursor:zoom-in}
+.galmain figcaption{position:absolute;left:10px;bottom:10px;background:rgba(14,24,17,.75);color:#fff;font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px}
+.galnav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(251,252,248,.9);color:#18261b;font-size:26px;line-height:1;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.galnav.gprev{left:8px}.galnav.gnext{right:8px}@media(hover:none){.galnav{display:none}}
+.galthumbs{display:flex;gap:8px;overflow-x:auto;padding:10px 0 6px;margin-bottom:8px}
+.galthumbs button{flex:none;width:62px;height:62px;border-radius:10px;overflow:hidden;border:2px solid transparent;padding:0;background:var(--leafbg);cursor:pointer}
+.galthumbs button.on{border-color:var(--leaf)}.galthumbs img{width:100%;height:100%;object-fit:cover;display:block}
+.galthumbs .addtile{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--leaf);font:700 22px/1 Figtree,sans-serif;border:2px dashed var(--line)}
+.galthumbs .addtile span{font-size:11px;margin-top:2px}
+.jyear{font-family:"Young Serif",Georgia,serif;font-weight:400;font-size:18px;margin:14px 0 0;color:var(--leaf)}
 .facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0}
 .facts div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
 .facts dt{font-size:13px;color:var(--mut)}.facts dd{margin:0;font-weight:700}
@@ -83,8 +94,8 @@ textarea{min-height:80px}
 .years{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px}
 .years button{min-height:38px;padding:0 14px;border-radius:99px;border:1.5px solid var(--line);background:none;color:var(--ink);font:600 15px Figtree,sans-serif;cursor:pointer}
 .years button.on{background:var(--leaf);border-color:var(--leaf);color:var(--bg)}
-.jentry{display:grid;grid-template-columns:58px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--line)}
-.jdate{font-family:"Young Serif",Georgia,serif;font-size:24px;line-height:1;white-space:nowrap}.jdate small{display:block;font:600 12px Figtree,sans-serif;color:var(--mut);margin-top:4px}
+.jentry{display:grid;grid-template-columns:66px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.jdate{font-family:"Young Serif",Georgia,serif;font-size:19px;line-height:1;white-space:nowrap}.jdate small{display:block;font:600 12px Figtree,sans-serif;color:var(--mut);margin-top:4px}
 .jentry p{margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
 .pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:4px}
 .pgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:zoom-in;background:var(--leafbg)}
@@ -196,6 +207,7 @@ img.missing{min-height:40px}
 
 <div class="viewer" id="viewer" hidden role="dialog" aria-label="Photo">
   <img id="vImg" alt="">
+  <p id="vCap" style="color:#fff;text-align:center;margin:8px 0 0;font-weight:600"></p>
   <div class="row"><button class="btn sun" id="vClose">Close</button><button class="btn del" id="vDel">Delete photo</button></div>
 </div>
 
@@ -377,7 +389,7 @@ function render(){
 
 // ---------- routing ----------
 function route(){const h=location.hash.slice(1);let v=['scan','seeds','calendar','garden'].includes(h)?h:'scan';
-  if(h.startsWith('seed-')){v='detail';packetSide='front';detailYear=null;renderDetail(h.slice(5))}else detailId=null;
+  if(h.startsWith('seed-')){v='detail';renderDetail(h.slice(5))}else detailId=null;
   closeViewer();
   document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===(v==='detail'?'seeds':v)));
@@ -589,48 +601,66 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-open]');if
 $('#q').oninput=render;
 
 // ---------- seed page ----------
-let detailId=null,detailBusy=false,detailYear=null,packetSide='front',jEditing=null,jPending=[];
+let detailId=null,detailBusy=false,jEditing=null,jPending=[],galIndex=0,galSeed=null;
 const findSeed=id=>seeds.find(x=>x.id===id);
 function saveSeed(s){const i=seeds.findIndex(x=>x.id===s.id);if(i>=0)seeds[i]=s;touch(s);render()}
+const CAPTION={front:'Front of packet',back:'Back of packet',plant:'Plant photo'};
+function galleryItems(s){
+  const items=[];
+  if(s.frontPhoto)items.push({id:s.frontPhoto,kind:'front'});
+  if(s.backPhoto)items.push({id:s.backPhoto,kind:'back'});
+  for(const p of (s.plantPhotos||[]).slice().reverse())items.push({id:p,kind:'plant'});
+  return items;
+}
 function renderDetail(id){
   detailId=id;const s=findSeed(id);const el=$('#detail');
   if(!s){el.innerHTML=`<div class="dtop"><a class="back" href="#seeds">‹ My seeds</a></div><div class="empty">This seed isn't in your catalog.</div>`;return}
-  const side=packetSide==='back'&&s.backPhoto?'back':s.frontPhoto?'front':s.backPhoto?'back':null;
-  const heroId=side==='back'?s.backPhoto:s.frontPhoto;
+  if(galSeed!==id){galSeed=id;galIndex=0}
+  const items=galleryItems(s);if(galIndex>=items.length)galIndex=Math.max(0,items.length-1);
   const journal=(s.journal||[]).slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
-  const years=[...new Set(journal.map(j=>+j.date.slice(0,4)))];
-  const thisYear=today.getFullYear();if(!years.includes(thisYear))years.push(thisYear);years.sort((a,b)=>b-a);
-  if(detailYear==null||!years.includes(detailYear))detailYear=journal.length?+journal[0].date.slice(0,4):thisYear;
-  const entries=journal.filter(j=>+j.date.slice(0,4)===detailYear);
   const facts=[['Sun',s.sun],['Spacing',s.spacingIn!=null&&`${s.spacingIn} in`],['Depth',s.depthIn!=null&&`${s.depthIn} in`],['Sprouts in',s.germDays&&`${s.germDays} days`],
     ['Maturity',s.dtm&&`${s.dtm} days`],['Planting',(s.indoorWeeks!=null||s.directWeeks!=null)&&(methodOf(s)==='indoor'?'Start indoors':'Sow outside')],['Brand',s.brand],['Packet year',s.year]].filter(f=>f[1]);
   const ev=events(s);
-  const sideBtn=k=>{const pid=k==='front'?s.frontPhoto:s.backPhoto;
-    return `<button type="button" data-side="${k}" class="${side===k?'on':''}">${pid?pimg(pid,'mini'):'<span class="mini">+</span>'}${pid?(k==='front'?'Front':'Back'):`Add ${k}`}</button>`};
+  let lastYear=null;
+  const journalHtml=journal.map(j=>{const d=D(j.date);const y=d.getFullYear();
+    const head=y!==lastYear?`<h4 class="jyear">${y}</h4>`:'';lastYear=y;
+    return `${head}<article class="jentry"><div class="jdate">${esc(d.toLocaleDateString(undefined,{month:'short'}))} ${d.getDate()}<small>${esc(d.toLocaleDateString(undefined,{weekday:'short'}))}</small></div><div>
+    ${j.text?`<p>${esc(j.text)}</p>`:''}${(j.photos||[]).length?`<div class="pgrid">${j.photos.map(p=>pimg(p,'','Journal photo').replace('<img',`<img data-view="journal" data-entry="${esc(j.id)}"`)).join('')}</div>`:''}
+    <button class="link" data-jedit="${esc(j.id)}">Edit</button><button class="link del" data-jdel="${esc(j.id)}">Delete</button></div></article>`}).join('');
   el.innerHTML=`<div class="dtop"><a class="back" href="#seeds">‹ My seeds</a><button class="btn alt sm" id="dEdit">Edit</button></div>
-  <div class="hero">${heroId?pimg(heroId,'',`${side==='back'?'Back':'Front'} of the ${label(s)} packet`).replace('<img','<img data-view="packet"'):`<button type="button" class="addph" data-addside="front"><span>+</span>Add a photo of the front of the packet</button>`}</div>
-  <div class="sides">${sideBtn('front')}${sideBtn('back')}</div>
+  <div class="gal" aria-roledescription="gallery" aria-label="Photos of this seed">
+    <div class="galmain" id="galMain" tabindex="0">${items.length?items.map((it,i)=>`<figure data-i="${i}">${pimg(it.id,'',`${CAPTION[it.kind]}: ${label(s)}`).replace('<img',`<img data-view="${it.kind}"`)}<figcaption>${CAPTION[it.kind]}${items.length>1?` · ${i+1} of ${items.length}`:''}</figcaption></figure>`).join('')
+      :`<figure><button type="button" class="addph" data-addside="front"><span>+</span>Add a photo of the front of the packet</button></figure>`}</div>
+    ${items.length>1?`<button class="galnav gprev" data-gnav="-1" aria-label="Previous photo">‹</button><button class="galnav gnext" data-gnav="1" aria-label="Next photo">›</button>`:''}
+  </div>
+  <div class="galthumbs">${items.map((it,i)=>`<button type="button" data-go="${i}" class="${i===galIndex?'on':''}" aria-label="${CAPTION[it.kind]}">${pimg(it.id,'','')}</button>`).join('')}
+    ${s.frontPhoto?'':'<button type="button" class="addtile" data-addside="front">+<span>Front</span></button>'}
+    ${s.backPhoto?'':'<button type="button" class="addtile" data-addside="back">+<span>Back</span></button>'}
+    <button type="button" class="addtile" id="addPlant">+<span>Plant</span></button></div>
   <h2>${esc(s.name)}${s.variety?` <span style="color:var(--leaf)">${esc(s.variety)}</span>`:''}</h2>
   <span class="chip ${s.category==='flower'?'flower':''}">${esc(s.category||'plant')}</span>
   ${facts.length?`<dl class="facts">${facts.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`:''}
   <div class="card"><h3>Schedule for ${D(settings.lf).getFullYear()}</h3>${ev.length?`<dl class="sched">${ev.map(e=>`<dt>${fmt(e.date)}</dt><dd><span class="dot" style="background:${COL[e.kind]}"></span>${esc(e.kind)}</dd>`).join('')}</dl>`:'<p class="hint">Add timing in Edit to get planting dates.</p>'}</div>
   <div class="card"><div class="head"><h3>Planting instructions</h3>${s.instructions?'':'<button class="btn alt sm" data-editfield="instructions">Add</button>'}</div>${s.instructions?`<p style="margin:0;white-space:pre-wrap">${esc(s.instructions)}</p>`:'<p class="hint" style="margin:0">Copy the sowing directions from the back of the packet, or use "Read details from packet photos" in Edit.</p>'}</div>
-  <div class="card"><div class="head"><h3>Plant photos</h3><button class="btn alt sm" id="addPlant">Add photos</button></div>
-  ${(s.plantPhotos||[]).length?`<div class="strip">${s.plantPhotos.slice().reverse().map(p=>pimg(p,'','Plant photo').replace('<img','<img data-view="plant"')).join('')}</div>`:'<p class="hint" style="margin:0">Photos of the growing plant, flowers and harvest go here.</p>'}</div>
+  <div class="card"><div class="head"><h3>Plant notes</h3>${s.notes?'':'<button class="btn alt sm" data-editfield="notes">Add</button>'}</div>${s.notes?`<p style="margin:0;white-space:pre-wrap">${esc(s.notes)}</p>`:'<p class="hint" style="margin:0">Your own notes about this plant.</p>'}</div>
   <div class="card"><div class="head"><h3>Planting journal</h3><button class="btn sm" id="jNew">New entry</button></div>
-  <div class="years" role="tablist" aria-label="Growing year">${years.map(y=>`<button type="button" role="tab" aria-selected="${y===detailYear}" class="${y===detailYear?'on':''}" data-year="${y}">${y}</button>`).join('')}</div>
   <div id="jForm"></div>
-  ${entries.length?entries.map(j=>{const d=D(j.date);return `<article class="jentry"><div class="jdate">${d.getDate()}<small>${esc(d.toLocaleDateString(undefined,{month:'short'}))}</small></div><div>
-    ${j.text?`<p>${esc(j.text)}</p>`:''}${(j.photos||[]).length?`<div class="pgrid">${j.photos.map(p=>pimg(p,'','Journal photo').replace('<img',`<img data-view="journal" data-entry="${esc(j.id)}"`)).join('')}</div>`:''}
-    <button class="link" data-jedit="${esc(j.id)}">Edit</button><button class="link del" data-jdel="${esc(j.id)}">Delete</button></div></article>`}).join('')
-    :`<p class="hint" style="margin:0">No entries for ${detailYear} yet. Record sowing, sprouting, transplanting, pests, harvests — anything you want to remember next season.</p>`}</div>
-  ${s.sourceUrl&&/^https:\/\//.test(s.sourceUrl)?`<p><a href="${esc(s.sourceUrl)}" target="_blank" rel="noopener" style="color:var(--leaf);font-weight:700">View on ${esc(s.brand||'the seed company site')} ↗</a></p>`:''}
-  <div class="card"><div class="head"><h3>Plant notes</h3>${s.notes?'':'<button class="btn alt sm" data-editfield="notes">Add</button>'}</div>${s.notes?`<p style="margin:0;white-space:pre-wrap">${esc(s.notes)}</p>`:'<p class="hint" style="margin:0">Your own notes about this plant.</p>'}</div>`;
+  ${journal.length?journalHtml:'<p class="hint" style="margin:0">No entries yet. Record sowing, sprouting, transplanting, pests, harvests — anything you want to remember, each with its date.</p>'}</div>
+  ${s.sourceUrl&&/^https:\/\//.test(s.sourceUrl)?`<p><a href="${esc(s.sourceUrl)}" target="_blank" rel="noopener" style="color:var(--leaf);font-weight:700">View on ${esc(s.brand||'the seed company site')} ↗</a></p>`:''}`;
   hydrate(el);
+  const main=$('#galMain');
+  if(main&&items.length){
+    requestAnimationFrame(()=>{main.scrollLeft=galIndex*main.clientWidth});
+    let t=null;main.onscroll=()=>{clearTimeout(t);t=setTimeout(()=>{if(!main.isConnected)return;const i=Math.round(main.scrollLeft/Math.max(1,main.clientWidth));if(i!==galIndex){galIndex=i;
+      el.querySelectorAll('.galthumbs [data-go]').forEach(b=>b.classList.toggle('on',+b.dataset.go===i))}},80)};
+    main.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();galGo(galIndex+(e.key==='ArrowRight'?1:-1),items.length)}};
+  }
 }
+function galGo(i,n){const main=$('#galMain');if(!main||!n)return;galIndex=(i+n)%n;main.scrollTo({left:galIndex*main.clientWidth,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  document.querySelectorAll('.galthumbs [data-go]').forEach(b=>b.classList.toggle('on',+b.dataset.go===galIndex))}
 function openJournalForm(s,entry){
   detailBusy=true;jEditing=entry||null;jPending=entry?[...(entry.photos||[])]:[];
-  const defDate=entry?entry.date:(detailYear===today.getFullYear()?isoDay(today):`${detailYear}-01-01`);
+  const defDate=entry?entry.date:isoDay(new Date());
   const box=$('#jForm');
   const pics=()=>{$('#jPics').innerHTML=jPending.map(p=>pimg(p,'','New journal photo')).join('');hydrate($('#jPics'))};
   box.innerHTML=`<div class="jform"><label for="jDate">Date</label><input type="date" id="jDate" value="${esc(defDate)}">
@@ -646,41 +676,44 @@ function openJournalForm(s,entry){
     if(!date){$('#jDate').focus();return}if(!text&&!jPending.length){$('#jText').focus();return}
     const cur=findSeed(s.id);if(!cur)return;const list=(cur.journal||[]).filter(j=>!jEditing||j.id!==jEditing.id);
     list.push({id:jEditing?jEditing.id:'j-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),date,text,photos:jPending});
-    detailBusy=false;jEditing=null;detailYear=+date.slice(0,4);saveSeed({...cur,journal:list});renderDetail(s.id)};
-  $('#jText').focus();
+    detailBusy=false;jEditing=null;saveSeed({...cur,journal:list});renderDetail(s.id)};
+  box.scrollIntoView({behavior:'smooth',block:'center'});$('#jText').focus({preventScroll:true});
 }
 $('#detail').addEventListener('click',async e=>{
   const s=findSeed(detailId);if(!s)return;const t=e.target;
   if(t.closest('#dEdit'))return openEditor(s,'',false);
   const ef=t.closest('[data-editfield]');if(ef){openEditor(s,'',false);const f=$('#f-'+ef.dataset.editfield);if(f){f.scrollIntoView({block:'center'});f.focus()}return}
-  const sideB=t.closest('[data-side]');
-  if(sideB){const k=sideB.dataset.side;if((k==='front'?s.frontPhoto:s.backPhoto)){packetSide=k;renderDetail(s.id)}else addPacket(s,k);return}
+  const go=t.closest('[data-go]');if(go)return galGo(+go.dataset.go,galleryItems(s).length);
+  const nav=t.closest('[data-gnav]');if(nav)return galGo(galIndex+ +nav.dataset.gnav,galleryItems(s).length);
   const addS=t.closest('[data-addside]');if(addS)return addPacket(s,addS.dataset.addside);
-  const yb=t.closest('[data-year]');if(yb){detailYear=+yb.dataset.year;renderDetail(s.id);return}
   if(t.closest('#jNew'))return openJournalForm(s);
   const je=t.closest('[data-jedit]');if(je){const en=(s.journal||[]).find(j=>j.id===je.dataset.jedit);if(en)openJournalForm(s,en);return}
   const jd=t.closest('[data-jdel]');
   if(jd){if(!jd.dataset.sure){jd.dataset.sure=1;jd.textContent='Tap again to delete';return}
     saveSeed({...s,journal:(s.journal||[]).filter(j=>j.id!==jd.dataset.jdel)});renderDetail(s.id);return}
-  if(t.closest('#addPlant')){const files=await pickPhotos(true);if(!files.length)return;const btn=$('#addPlant');btn.textContent='Adding…';btn.disabled=true;
+  const ap=t.closest('#addPlant');
+  if(ap){const files=await pickPhotos(true);if(!files.length)return;ap.disabled=true;ap.innerHTML='…';
     const ids=[];for(const f of files){try{ids.push(await savePhoto(await fileToCanvas(f)))}catch(err){}}
-    const cur=findSeed(s.id);if(cur&&ids.length)saveSeed({...cur,plantPhotos:[...(cur.plantPhotos||[]),...ids]});renderDetail(s.id);return}
+    const cur=findSeed(s.id);if(cur&&ids.length){galIndex=(cur.frontPhoto?1:0)+(cur.backPhoto?1:0);saveSeed({...cur,plantPhotos:[...(cur.plantPhotos||[]),...ids]})}
+    renderDetail(s.id);return}
   const img=t.closest('img[data-view]');
   if(img){const kind=img.dataset.view,pid=img.dataset.photo,entry=img.dataset.entry;
-    openViewer(pid,kind==='packet'?null:()=>{const cur=findSeed(s.id);if(!cur)return;
-      if(kind==='plant')saveSeed({...cur,plantPhotos:(cur.plantPhotos||[]).filter(p=>p!==pid)});
+    openViewer(pid,()=>{const cur=findSeed(s.id);if(!cur)return;
+      if(kind==='front')saveSeed({...cur,frontPhoto:null,thumb:''});
+      else if(kind==='back')saveSeed({...cur,backPhoto:null});
+      else if(kind==='plant')saveSeed({...cur,plantPhotos:(cur.plantPhotos||[]).filter(p=>p!==pid)});
       else saveSeed({...cur,journal:(cur.journal||[]).map(j=>j.id===entry?{...j,photos:(j.photos||[]).filter(p=>p!==pid)}:j)});
-      renderDetail(s.id)})}
+      renderDetail(s.id)},kind==='journal'?'Journal photo':CAPTION[kind])}
 });
 async function addPacket(s,side){
   const [f]=await pickPhotos(false);if(!f)return;
   try{const c=await fileToCanvas(f);const pid=await savePhoto(c);const cur=findSeed(s.id);if(!cur)return;
     const upd={...cur,[side==='back'?'backPhoto':'frontPhoto']:pid};if(side==='front')upd.thumb=shrink(c,160).toDataURL('image/jpeg',.7);
-    packetSide=side;saveSeed(upd);renderDetail(s.id)}catch(e){}
+    galIndex=side==='front'?0:(upd.frontPhoto?1:0);saveSeed(upd);renderDetail(s.id)}catch(e){}
 }
 // full-screen photo viewer
 let vDelete=null;
-async function openViewer(pid,onDelete){vDelete=onDelete;$('#vImg').src=await photoSrc(pid)||'';$('#vDel').hidden=!onDelete;$('#vDel').textContent='Delete photo';delete $('#vDel').dataset.sure;$('#viewer').hidden=false;$('#vClose').focus()}
+async function openViewer(pid,onDelete,caption){vDelete=onDelete;$('#vImg').src=await photoSrc(pid)||'';$('#vImg').alt=caption||'';$('#vCap').textContent=caption||'';$('#vDel').hidden=!onDelete;$('#vDel').textContent='Delete photo';delete $('#vDel').dataset.sure;$('#viewer').hidden=false;$('#vClose').focus()}
 function closeViewer(){$('#viewer').hidden=true;$('#vImg').removeAttribute('src');vDelete=null}
 $('#vClose').onclick=closeViewer;
 $('#vDel').onclick=function(){if(!this.dataset.sure){this.dataset.sure=1;this.textContent='Tap again to delete';return}const f=vDelete;closeViewer();f&&f()};

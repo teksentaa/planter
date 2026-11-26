@@ -75,8 +75,10 @@ EVERYDAY COMMANDS
 SEED PAGES, PHOTOS AND JOURNAL
   Each seed has Planting instructions (filled from the packet or the seed company's
   growing guide) and Plant notes (your own notes).
-  Tap a seed in My seeds to open its page: front-of-packet photo (tap Back to switch),
-  growing details, this season's schedule, plant photos and a planting journal by year.
+  Tap a seed in My seeds to open its page: a photo gallery at the top (front and back of the
+  packet, then plant photos; swipe or tap the thumbnails, + tiles to add more), growing details,
+  this season's schedule, planting instructions, plant notes, and a planting journal whose
+  entries each have their own date, grouped by year.
   Edit (top right) changes details and replaces the packet photos.
   Photos are resized to about 1400 px and stored as files on the server. Each device also
   keeps its own copies, so photos you take offline upload when it reconnects.
