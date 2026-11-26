@@ -81,6 +81,7 @@ textarea{min-height:80px}
 .galthumbs button.on{border-color:var(--leaf)}.galthumbs img{width:100%;height:100%;object-fit:cover;display:block}
 .galthumbs .addtile{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--leaf);font:700 22px/1 Figtree,sans-serif;border:2px dashed var(--line)}
 .galthumbs .addtile span{font-size:11px;margin-top:2px}
+.jpic{position:relative}.jpic button{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(14,24,17,.7);color:#fff;font-size:18px;line-height:1;cursor:pointer}
 .jyear{font-family:"Young Serif",Georgia,serif;font-weight:400;font-size:18px;margin:14px 0 0;color:var(--leaf)}
 .facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0}
 .facts div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
@@ -335,7 +336,7 @@ function hydrate(root=document){
   });
 }
 const pimg=(id,cls='',alt='')=>id&&/^p-[a-z0-9]+$/.test(id)?`<img data-photo="${id}" class="${cls}" alt="${esc(alt)}" loading="lazy">`:'';
-function pickPhotos(multiple){return new Promise(res=>{const i=document.createElement('input');i.type='file';i.accept='image/*';i.multiple=!!multiple;
+function pickPhotos(multiple,camera){return new Promise(res=>{const i=document.createElement('input');i.type='file';i.accept='image/*';i.multiple=!!multiple&&!camera;if(camera)i.setAttribute('capture','environment');
   i.onchange=()=>res([...i.files]);i.addEventListener('cancel',()=>res([]));i.click()})}
 
 // ---------- schedule ----------
@@ -662,15 +663,18 @@ function openJournalForm(s,entry){
   detailBusy=true;jEditing=entry||null;jPending=entry?[...(entry.photos||[])]:[];
   const defDate=entry?entry.date:isoDay(new Date());
   const box=$('#jForm');
-  const pics=()=>{$('#jPics').innerHTML=jPending.map(p=>pimg(p,'','New journal photo')).join('');hydrate($('#jPics'))};
+  const pics=()=>{$('#jPics').innerHTML=jPending.map((p,i)=>`<div class="jpic">${pimg(p,'',`Journal photo ${i+1}`)}<button type="button" data-rm="${i}" aria-label="Remove photo ${i+1}">×</button></div>`).join('');hydrate($('#jPics'))};
   box.innerHTML=`<div class="jform"><label for="jDate">Date</label><input type="date" id="jDate" value="${esc(defDate)}">
   <label for="jText">What happened</label><textarea id="jText" placeholder="e.g. 12 of 15 seeds sprouted. Moved under grow lights.">${esc(entry?entry.text:'')}</textarea>
-  <div class="pgrid" id="jPics" style="margin-top:10px"></div>
-  <div class="row" style="margin-top:10px"><button class="btn alt sm" id="jAddPh">Add photos</button></div>
+  <label>Photos</label>
+  <div class="pgrid" id="jPics" style="margin-bottom:8px"></div>
+  <div class="row"><button type="button" class="btn alt sm" id="jCam">Take photo</button><button type="button" class="btn alt sm" id="jLib">Choose photos</button></div>
   <div class="row" style="margin-top:12px"><button class="btn" id="jSave">${entry?'Save changes':'Save entry'}</button><button class="btn alt" id="jCancel">Cancel</button><span class="hint" id="jMsg"></span></div></div>`;
   pics();
-  $('#jAddPh').onclick=async()=>{const files=await pickPhotos(true);if(!files.length)return;$('#jMsg').textContent='Adding photos…';
+  const addPics=async camera=>{const files=await pickPhotos(true,camera);if(!files.length)return;$('#jMsg').textContent='Adding photos…';
     for(const f of files){try{jPending.push(await savePhoto(await fileToCanvas(f)));pics()}catch(e){}}$('#jMsg').textContent=''};
+  $('#jCam').onclick=()=>addPics(true);$('#jLib').onclick=()=>addPics(false);
+  $('#jPics').onclick=e=>{const b=e.target.closest('[data-rm]');if(!b)return;jPending.splice(+b.dataset.rm,1);pics()};
   $('#jCancel').onclick=()=>{detailBusy=false;jEditing=null;renderDetail(s.id)};
   $('#jSave').onclick=()=>{const date=$('#jDate').value,text=$('#jText').value.trim();
     if(!date){$('#jDate').focus();return}if(!text&&!jPending.length){$('#jText').focus();return}
