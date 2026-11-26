@@ -541,7 +541,7 @@ function openEditor(s,message,isNew,cands){
   ${s.sourceUrl&&/^https:\/\//.test(s.sourceUrl)?`<p class="hint"><a href="${esc(s.sourceUrl)}" target="_blank" rel="noopener" style="color:var(--leaf);font-weight:600">Open the product page ↗</a></p>`:''}
   ${(cands||[]).length>1||((cands||[]).length===1&&cands[0].url!==s.sourceUrl)?`<label for="f-alt">Not the right one?</label><select id="f-alt"><option value="">Other matches (${cands.filter(c=>c.url!==s.sourceUrl).length})</option>${cands.filter(c=>c.url!==s.sourceUrl).map(c=>`<option value="${esc(c.url)}" data-site="${esc(c.site)}">${esc(c.title)} · ${esc(c.siteName)}</option>`).join('')}</select>`:''}
   <div class="g2">${['frontPhoto','backPhoto'].map(k=>`<div><label>${k==='frontPhoto'?'Front of packet':'Back of packet'}</label><button type="button" class="pslot ${ph[k]?'has':''}" data-slot="${k}">${slot(k)}</button></div>`).join('')}</div>
-  <p class="hint">Tap a photo to take or replace it. The front is shown on the seed's page.</p>
+  <p class="hint">Tap a box to take the photo with your camera. The front is shown first on the seed's page.</p>
   ${canReadPacket()?`<div class="row" style="margin-top:8px"><button type="button" class="btn alt sm" id="edRead">Read details from packet photos</button><span class="hint" id="edReadMsg"></span></div>`:''}
   <div class="g2">${[['name','Plant'],['variety','Variety'],['brand','Brand'],['sun','Sun']].map(([k,l])=>`<div><label for="f-${k}">${l}</label><input id="f-${k}" value="${v(k)}"></div>`).join('')}
   <div><label for="f-category">Type</label><select id="f-category">${['vegetable','flower','herb','fruit'].map(c=>`<option ${s.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
@@ -567,7 +567,7 @@ function openEditor(s,message,isNew,cands){
       openEditor({...cur,...w,id:cur.id,barcode:cur.barcode,frontPhoto:ph.frontPhoto,backPhoto:ph.backPhoto,thumb:ph.thumb},webMsg(j.result),isNew,cands)}
     catch(err){e.target.disabled=false;e.target.insertAdjacentHTML('afterend','<p class="warn">That page could not be read.</p>')}};
   $('#ed').querySelectorAll('[data-slot]').forEach(b=>b.onclick=async()=>{
-    const [f]=await pickPhotos(false);if(!f)return;
+    const [f]=await pickPhotos(false,true);if(!f)return;
     b.innerHTML='<span>Saving…</span>';
     try{const c=await fileToCanvas(f);const k=b.dataset.slot;ph[k]=await savePhoto(c);if(k==='frontPhoto')ph.thumb=shrink(c,160).toDataURL('image/jpeg',.7);
       b.classList.add('has');b.innerHTML=slot(k);hydrate(b)}catch(e){b.innerHTML='<span>Could not read that photo</span>'}
@@ -710,7 +710,7 @@ $('#detail').addEventListener('click',async e=>{
       renderDetail(s.id)},kind==='journal'?'Journal photo':CAPTION[kind])}
 });
 async function addPacket(s,side){
-  const [f]=await pickPhotos(false);if(!f)return;
+  const [f]=await pickPhotos(false,true);if(!f)return;
   try{const c=await fileToCanvas(f);const pid=await savePhoto(c);const cur=findSeed(s.id);if(!cur)return;
     const upd={...cur,[side==='back'?'backPhoto':'frontPhoto']:pid};if(side==='front')upd.thumb=shrink(c,160).toDataURL('image/jpeg',.7);
     galIndex=side==='front'?0:(upd.frontPhoto?1:0);saveSeed(upd);renderDetail(s.id)}catch(e){}
