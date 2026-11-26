@@ -40,6 +40,8 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(s["indoorWeeks"], 7)
         self.assertIn("indoorWeeks", r["stated"])
         self.assertNotIn("transplantWeeks", r["stated"])  # typical value, not printed as a number
+        self.assertTrue(s["instructions"].startswith("Start seeds indoors 6-8 weeks before your average last frost date."), s["instructions"])
+        self.assertNotIn("Packed for", s["instructions"])
 
     def test_sentences_only(self):
         r = packetreader.parse_packet_text([LOOSE_TEXT])
@@ -47,6 +49,8 @@ class ParseTests(unittest.TestCase):
         self.assertEqual((s["name"], s["variety"], s["brand"], s["year"]), ("Pea", "Sugar Snap", "Ferry-Morse", 2026))
         self.assertEqual((s["depthIn"], s["spacingIn"], s["germDays"], s["dtm"]), (1, 2, 7, 62))
         self.assertEqual(s["directWeeks"], -6)  # typical pea timing; "as soon as soil can be worked" agrees
+        self.assertIn("as soon as the soil can be worked", s["instructions"])
+        self.assertNotIn("Sell by", s["instructions"])
 
     def test_nothing_useful(self):
         r = packetreader.parse_packet_text(["Thank you for gardening with us"])

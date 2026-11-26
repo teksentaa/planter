@@ -62,6 +62,7 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(r["indoorWeeks"], 8)       # 6-10 weeks -> 8
         self.assertEqual(r["transplantWeeks"], 2)   # typical tomato timing kept
         self.assertEqual(r["brand"], "Baker Creek")
+        self.assertTrue(r["instructions"].startswith("Start seeds indoors 6-10 weeks"), r.get("instructions"))
 
     def test_eden(self):
         r = self.p(EDEN, "eden")
@@ -79,6 +80,7 @@ class ParseTests(unittest.TestCase):
         r = self.p(VICTORY, "victory")
         self.assertEqual((r["name"], r["variety"]), ("Tomato", "Cherokee Purple"))
         self.assertEqual((r["dtm"], r["depthIn"], r["indoorWeeks"], r["method"], r["directWeeks"]), (80, 0.25, 7, "indoor", None))
+        self.assertIn("Harden off plants", r["instructions"])
 
     def test_timing_direct_vs_indoor(self):
         t = seedsites.parse_timing("Direct sow outdoors 2 weeks before the last frost.")

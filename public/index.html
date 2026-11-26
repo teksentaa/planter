@@ -99,9 +99,11 @@ img.missing{min-height:40px}
 .pslot:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .camctl{margin-top:10px}.zoom{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;margin:0;flex:1 1 160px}
 .zoom input{flex:1;min-height:auto;padding:0;border:0;background:none;accent-color:var(--leaf)}
+.packet{display:block;width:100%;border:0;padding:0;background:none;cursor:pointer;border-radius:18px;border:1px solid var(--line);overflow:hidden}
+.packet svg{width:100%;height:auto;display:block}.packet:active{transform:scale(.99)}
+.packet:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .prev{width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:var(--leafbg);margin-top:10px}
 </style>
-<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js" defer></script>
 </head>
 <body>
 <header>
@@ -111,36 +113,32 @@ img.missing{min-height:40px}
 </header>
 <main>
 <section class="view" id="v-scan">
-  <h2>Scan a seed packet</h2>
-  <p class="lead">Point the camera at the barcode on the back of the packet.</p>
-  <div class="cam" id="cam">
-    <video id="video" playsinline muted></video>
-    <div class="idle" id="camIdle">
-      <div class="bars" aria-hidden="true"><i style="width:5px"></i><i style="width:2px"></i><i style="width:7px"></i><i style="width:3px"></i><i style="width:2px"></i><i style="width:6px"></i><i style="width:2px"></i><i style="width:4px"></i><i style="width:7px"></i><i style="width:2px"></i><i style="width:3px"></i><i style="width:6px"></i><i style="width:2px"></i><i style="width:5px"></i></div>
-      <button class="btn sun" id="startCam">Start scanner</button>
-      <span id="camMsg" style="font-size:14px;opacity:.85"></span>
-    </div>
-    <div class="ret" id="ret" hidden></div>
-  </div>
-  <div class="row camctl" id="camCtl" hidden>
-    <button class="btn alt sm" id="camSwitch">Switch camera</button>
-    <button class="btn alt sm" id="camTorch" hidden>Light</button>
-    <label class="zoom" id="camZoomWrap" hidden>Zoom <input type="range" id="camZoom" min="1" max="4" step="0.1" value="1"></label>
-  </div>
-  <p class="hint" id="camInfo"></p>
-  <div class="row" style="margin-top:12px">
-    <button class="btn alt" id="stopCam" hidden>Stop scanner</button>
-    <button class="btn alt" id="snapBtn">Photograph the packet instead</button>
-  </div>
+  <h2>Add a seed packet</h2>
+  <p class="lead">Photograph the <b>back</b> of the packet. That's where the growing details and planting instructions are printed.</p>
+  <button class="packet" id="snapBtn" aria-label="Photograph the back of the seed packet">
+    <svg viewBox="0 0 600 330" role="img" aria-hidden="true">
+      <rect width="600" height="330" rx="18" fill="#f3efe4"/>
+      <path d="M0 34 L30 14 L60 34 L90 14 L120 34 L150 14 L180 34 L210 14 L240 34 L270 14 L300 34 L330 14 L360 34 L390 14 L420 34 L450 14 L480 34 L510 14 L540 34 L570 14 L600 34 V0 H0z" fill="#1f5a32"/>
+      <g fill="#1f5a32"><rect x="40" y="62" width="230" height="18" rx="4"/></g>
+      <g fill="#8a8f80"><rect x="40" y="98" width="300" height="9" rx="4"/><rect x="40" y="116" width="270" height="9" rx="4"/><rect x="40" y="134" width="290" height="9" rx="4"/></g>
+      <g font-family="Figtree,sans-serif" font-size="15" fill="#18261b" font-weight="700">
+        <text x="40" y="178">Days to maturity</text><text x="40" y="203">Seed depth</text><text x="40" y="228">Spacing</text><text x="40" y="253">Sow indoors</text></g>
+      <g font-family="Figtree,sans-serif" font-size="15" fill="#18261b"><text x="190" y="178">80</text><text x="190" y="203">1/4 in</text><text x="190" y="228">24 in</text><text x="190" y="253">6–8 wks before frost</text></g>
+      <circle cx="470" cy="150" r="74" fill="#1f5a32"/><circle cx="470" cy="150" r="74" fill="none" stroke="#f0a202" stroke-width="5"/>
+      <rect x="432" y="128" width="76" height="52" rx="10" fill="#fbfcf8"/><circle cx="470" cy="154" r="16" fill="#1f5a32"/><circle cx="470" cy="154" r="8" fill="#fbfcf8"/><rect x="452" y="120" width="22" height="10" rx="3" fill="#fbfcf8"/>
+      <rect x="330" y="262" width="250" height="46" rx="23" fill="#f0a202"/>
+      <text x="455" y="292" text-anchor="middle" font-family="Figtree,sans-serif" font-weight="700" font-size="18" fill="#18261b">Photograph the back</text>
+    </svg>
+  </button>
   <input type="file" id="photo" accept="image/*" capture="environment" hidden>
   <div id="scanOut"></div>
   <div class="card">
     <h3>Type it in</h3>
     <label for="typed">Plant or variety</label>
-    <input id="typed" list="cropList" placeholder="e.g. Cherokee Purple tomato, or the barcode number" autocomplete="off">
+    <input id="typed" list="cropList" placeholder="e.g. Cherokee Purple tomato" autocomplete="off">
     <label for="site">Seed company</label>
     <select id="site"><option value="">Any of my seed companies</option><option value="bakercreek">Baker Creek (rareseeds.com)</option><option value="eden">Eden Brothers</option><option value="burpee">Burpee</option><option value="johnnys">Johnny's Selected Seeds</option><option value="victory">Victory Seeds</option></select>
-    <p class="hint">Also used when you scan a barcode. Pick the company to get a faster, more accurate match.</p>
+    <p class="hint">Pick the company to get a faster, more accurate match. Also used after reading a packet photo.</p>
     <datalist id="cropList"></datalist>
     <div class="row" style="margin-top:12px"><button class="btn" id="typedGo">Look it up</button></div>
   </div>
@@ -202,7 +200,7 @@ img.missing{min-height:40px}
 </div>
 
 <nav>
-  <a href="#scan" data-v="scan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 8v8M11 8v8M14 8v8M17 8v8"/></svg>Scan</a>
+  <a href="#scan" data-v="scan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Add</a>
   <a href="#seeds" data-v="seeds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21v-9M12 13c-5 0-7-3-7-8 5 0 7 3 7 8zM12 11c0-4 3-7 7-7 0 4-3 7-7 7z"/></svg>Seeds</a>
   <a href="#calendar" data-v="calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
   <a href="#garden" data-v="garden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Garden</a>
@@ -356,7 +354,7 @@ function render(){
   $('#seedCount').textContent=seeds.length?`${seeds.length} packet${seeds.length>1?'s':''} in your catalog`:'';
   $('#seedList').innerHTML=list.length?list.map(s=>{
     const nx=events(s).find(e=>e.date>=today);
-    return `<div class="card"><button class="seed" data-open="${esc(s.id)}">${s.frontPhoto?pimg(s.frontPhoto,'thumb'):s.thumb&&s.thumb.startsWith('data:image/')?`<img class="thumb" src="${esc(s.thumb)}" alt="">`:'<span class="thumb"></span>'}
+    return `<div class="card"><button class="seed" data-open="${esc(s.id)}">${s.frontPhoto?pimg(s.frontPhoto,'thumb'):s.backPhoto?pimg(s.backPhoto,'thumb'):s.thumb&&s.thumb.startsWith('data:image/')?`<img class="thumb" src="${esc(s.thumb)}" alt="">`:'<span class="thumb"></span>'}
     <span><b>${esc(s.name)}${s.variety?` · ${esc(s.variety)}`:''}</b><span class="chip ${s.category==='flower'?'flower':''}">${esc(s.category||'plant')}</span>
     <span class="next">${nx?`Next: ${esc(nx.kind.toLowerCase())}, ${fmt(nx.date)}`:'No upcoming dates'}</span></span></button></div>`}).join('')
     :`<div class="empty">${seeds.length?'No seeds match.':'No seeds yet. Scan a packet to start your catalog.'}</div>`;
@@ -383,118 +381,15 @@ function route(){const h=location.hash.slice(1);let v=['scan','seeds','calendar'
   closeViewer();
   document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===(v==='detail'?'seeds':v)));
-  if(v!=='scan')stopScan();window.scrollTo(0,0);if(server)connectServer()}
+  window.scrollTo(0,0);if(server)connectServer()}
 addEventListener('hashchange',route);
-
-// ---------- live scanner ----------
-// Picks the phone's main back lens (the ultra-wide one can't focus up close), asks for HD with
-// continuous focus, and reads frames with the browser's barcode reader, falling back to ZXing.
-const video=$('#video');let stream=null,track=null,loop=null,scanning=false,busyFrame=false;
-const FORMATS=['upc_a','upc_e','ean_13','ean_8'];
-let det=null,engine='',cams=[],zxReader=null,tick=0;
-const CAMKEY='seedPlanner.camera';
-async function makeDetector(){
-  if(!('BarcodeDetector'in window))return null;
-  try{const sup=await BarcodeDetector.getSupportedFormats();const f=FORMATS.filter(x=>sup.includes(x));return f.length?new BarcodeDetector({formats:f}):null}catch(e){return null}
-}
-function makeZx(){
-  if(!window.ZXing)return null;
-  try{const hints=new Map();hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E,ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8]);
-    hints.set(ZXing.DecodeHintType.TRY_HARDER,true);const r=new ZXing.MultiFormatReader();r.setHints(hints);return r}catch(e){return null}
-}
-async function backCameras(){
-  const all=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
-  const back=all.filter(d=>/back|rear|environment/i.test(d.label));
-  return back.length?back:all;
-}
-function mainCamera(list){ // Android names the main lens "camera2 0, facing back"; others come later
-  return list.find(d=>/camera2 0\b|camera 0\b/i.test(d.label))||list[0];
-}
-async function openStream(deviceId){
-  const v={width:{ideal:1920},height:{ideal:1080}};
-  if(deviceId)v.deviceId={exact:deviceId};else v.facingMode={ideal:'environment'};
-  const st=await navigator.mediaDevices.getUserMedia({video:v,audio:false});
-  const tr=st.getVideoTracks()[0];
-  try{await tr.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(e){}
-  return [st,tr];
-}
-function closeStream(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;track=null;video.srcObject=null}
-function setupControls(){
-  const caps=track&&track.getCapabilities?track.getCapabilities():{};
-  $('#camTorch').hidden=!caps.torch;$('#camTorch').dataset.on='';$('#camTorch').textContent='Light';
-  const z=$('#camZoom');
-  if(caps.zoom&&caps.zoom.max>caps.zoom.min){$('#camZoomWrap').hidden=false;z.min=caps.zoom.min;z.max=Math.min(caps.zoom.max,6);z.step=caps.zoom.step||0.1;
-    const cur=(track.getSettings().zoom)||caps.zoom.min;z.value=cur}else $('#camZoomWrap').hidden=true;
-  $('#camSwitch').hidden=cams.length<2;$('#camCtl').hidden=false;
-  const set=track.getSettings?track.getSettings():{};
-  const lbl=(cams.find(c=>c.deviceId===set.deviceId)||{}).label||track.label||'camera';
-  $('#camInfo').textContent=`${lbl.replace(/\s*\(.*?\)\s*/g,'')} · ${set.width||video.videoWidth}×${set.height||video.videoHeight} · reader: ${engine}${cams.length>1?` · ${cams.length} back cameras`:''}`;
-}
-async function startScan(useId){
-  $('#camMsg').textContent='';
-  try{
-    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('nocam');
-    det=await makeDetector();zxReader=makeZx();
-    engine=det&&zxReader?'built-in + ZXing':det?'built-in':zxReader?'ZXing':'';
-    if(!engine)throw new Error('nolib');
-    let saved='';try{saved=localStorage.getItem(CAMKEY)||''}catch(e){}
-    [stream,track]=await openStream(useId||saved||null);
-    cams=await backCameras(); // labels are only available once camera access is granted
-    const want=useId||(cams.some(c=>c.deviceId===saved)?saved:(mainCamera(cams)||{}).deviceId);
-    const cur=track.getSettings?track.getSettings().deviceId:'';
-    if(want&&cur&&want!==cur){closeStream();[stream,track]=await openStream(want)}
-    video.srcObject=stream;await video.play();
-    scanning=true;$('#camIdle').hidden=true;$('#ret').hidden=false;$('#stopCam').hidden=false;
-    setupControls();
-    loop=setInterval(readFrame,180);
-  }catch(e){
-    stopScan();
-    $('#camMsg').textContent=e&&e.name==='NotAllowedError'?'Camera access was blocked. Allow it in your browser settings, or photograph the packet instead.':
-      e&&e.name==='OverconstrainedError'?'That camera could not start. Tap Start scanner again.':'The scanner could not start here. Photograph the packet instead.';
-    if(e&&e.name==='OverconstrainedError')try{localStorage.removeItem(CAMKEY)}catch(x){}
-  }
-}
-const frameCanvas=document.createElement('canvas');
-async function readFrame(){
-  if(!scanning||busyFrame||!video.videoWidth)return;busyFrame=true;tick++;
-  try{
-    // Built-in reader on the full frame; every other tick also try ZXing on the centre strip (where the guide box is).
-    if(det){const r=await det.detect(video);if(r[0]&&r[0].rawValue){found(r[0].rawValue);return}}
-    if(zxReader&&(!det||tick%2===0)){
-      const w=video.videoWidth,h=video.videoHeight,cw=Math.round(w*.8),ch=Math.round(h*.45);
-      frameCanvas.width=cw;frameCanvas.height=ch;
-      frameCanvas.getContext('2d',{willReadFrequently:true}).drawImage(video,(w-cw)/2,(h-ch)/2,cw,ch,0,0,cw,ch);
-      try{const src=new ZXing.HTMLCanvasElementLuminanceSource(frameCanvas);const res=zxReader.decodeWithState(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src)));
-        if(res&&res.getText()){found(res.getText());return}}catch(e){} // NotFoundException on most frames
-    }
-  }catch(e){}finally{busyFrame=false}
-}
-function grabFrame(){if(!video.videoWidth)return null;const c=document.createElement('canvas');c.width=video.videoWidth;c.height=video.videoHeight;c.getContext('2d').drawImage(video,0,0);return c}
-function stopScan(){clearInterval(loop);loop=null;closeStream();scanning=false;
-  $('#camIdle').hidden=false;$('#ret').hidden=true;$('#stopCam').hidden=true;$('#camCtl').hidden=true;$('#camInfo').textContent=''}
-async function found(code){if(!scanning)return;scanning=false;const frame=grabFrame();stopScan();if(navigator.vibrate)navigator.vibrate(60);process({code,canvas:frame})}
-$('#startCam').onclick=()=>startScan();$('#stopCam').onclick=stopScan;
-$('#camSwitch').onclick=async()=>{
-  if(cams.length<2)return;const cur=track&&track.getSettings?track.getSettings().deviceId:'';
-  const i=cams.findIndex(c=>c.deviceId===cur);const next=cams[(i+1)%cams.length].deviceId;
-  try{localStorage.setItem(CAMKEY,next)}catch(e){}
-  clearInterval(loop);closeStream();scanning=false;startScan(next);
-};
-$('#camTorch').onclick=async function(){const on=!this.dataset.on;try{await track.applyConstraints({advanced:[{torch:on}]});this.dataset.on=on?'1':'';this.textContent=on?'Light off':'Light'}catch(e){}};
-$('#camZoom').oninput=async e=>{try{await track.applyConstraints({advanced:[{zoom:+e.target.value}]})}catch(x){}};
-$('#video').onclick=async()=>{ // tap to refocus where supported
-  if(!track)return;try{await track.applyConstraints({advanced:[{focusMode:'single-shot'}]});setTimeout(()=>track&&track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{}),800)}catch(e){}
-};
 
 // ---------- photo path ----------
 $('#snapBtn').onclick=()=>$('#photo').click();
-$('#photo').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;stopScan();
+$('#photo').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(f)}).catch(()=>null);
   if(!img){$('#scanOut').innerHTML='<p class="warn">That photo could not be opened.</p>';return}
-  let code=null;
-  try{if('BarcodeDetector'in window){const r=await new BarcodeDetector({formats:['upc_a','upc_e','ean_13','ean_8']}).detect(img);if(r[0])code=r[0].rawValue}}catch(e){}
-  if(!code)try{if(window.ZXing)code=(await new ZXing.BrowserMultiFormatReader().decodeFromImageElement(img)).getText()}catch(e){}
-  process({code,canvas:shrink(img,1600)});
+  process({canvas:shrink(img,1600)});
 };
 function shrink(src,max){const w=src.naturalWidth||src.width,h=src.naturalHeight||src.height,k=Math.min(1,max/Math.max(w,h));const c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(src,0,0,c.width,c.height);return c}
 
@@ -529,9 +424,9 @@ If nothing identifies a plant, answer {"error":"what you see"}.`;
 async function process({code,canvas,text}){
   const dup=code&&seeds.find(s=>s.barcode===code);
   if(dup){$('#scanOut').innerHTML='';location.hash='#seed-'+dup.id;return}
-  status(code?`Barcode ${code}. Looking it up on your seed companies' sites…`:`Looking up "${text}" on your seed companies' sites…`);
+  status(code?`Barcode ${code}. Looking it up on your seed companies' sites…`:text?`Looking up "${text}" on your seed companies' sites…`:'Reading the packet photo…');
   let product=null,web=null,cands=[];
-  if(server){
+  if(server&&(text||code)){
     try{const r=await fetch('api/lookup?'+new URLSearchParams({q:text||'',code:code||'',site:$('#site').value}));
       const j=await r.json();web=j.result||null;cands=j.candidates||[];product=j.product||null}catch(e){}
   }
@@ -568,15 +463,17 @@ async function process({code,canvas,text}){
     }catch(e){msg=`${e.message} Used the built-in plant list instead.`}
   }
   if(!msg)msg=crop?'Filled in from the built-in plant list. Check the packet and adjust the timing.':(product?`The barcode is "${product.title}", but it isn't in the built-in plant list. Fill in the details from the packet.`:'Not recognized. Fill in the details from the packet.');
-  // A barcode photo shows the back of the packet; a photo with no barcode is usually the front.
+  // The packet photo is of the back (growing details); add the front from the editor or seed page.
   let frontPhoto=null,backPhoto=null;
-  if(canvas)try{const pid=await savePhoto(canvas);if(code)backPhoto=pid;else frontPhoto=pid}catch(e){}
+  if(canvas)try{backPhoto=await savePhoto(canvas)}catch(e){}
+  const same=seeds.find(x=>seed.name&&x.name.toLowerCase()===String(seed.name).toLowerCase()&&(x.variety||'').toLowerCase()===String(seed.variety||'').toLowerCase());
+  if(same)msg=(msg?msg+' ':'')+`You already have ${label(same)} in your catalog; saving adds another entry.`;
   $('#scanOut').innerHTML='';
   openEditor({...seed,barcode:code||'',thumb:frontPhoto?thumb:'',frontPhoto,backPhoto,id:'s-'+Date.now().toString(36)},msg,true,cands);
 }
 const canReadPacket=()=>server&&(serverReader.ocr||!!serverReader.vision);
 const TIMING_KEYS=['indoorWeeks','transplantWeeks','directWeeks'];
-const FIELD_NAMES={name:'plant',variety:'variety',brand:'brand',dtm:'days to maturity',germDays:'days to sprout',depthIn:'depth',spacingIn:'spacing',sun:'sun',indoorWeeks:'start-indoors timing',transplantWeeks:'transplant timing',directWeeks:'direct-sow timing',year:'packet year'};
+const FIELD_NAMES={name:'plant',variety:'variety',brand:'brand',dtm:'days to maturity',germDays:'days to sprout',depthIn:'depth',spacingIn:'spacing',sun:'sun',indoorWeeks:'start-indoors timing',instructions:'planting instructions',transplantWeeks:'transplant timing',directWeeks:'direct-sow timing',year:'packet year'};
 const canvasB64=c=>shrink(c,1600).toDataURL('image/jpeg',.85).split(',')[1];
 async function photoB64(id){
   let blob=null;const rec=await idbGet(id);if(rec&&rec.blob)blob=rec.blob;
@@ -604,7 +501,7 @@ function packetMsg(res,used){
   const n=used.filter(k=>FIELD_NAMES[k]).map(k=>FIELD_NAMES[k]);
   return `Read from the packet photo (${res.engine}): ${n.length?n.join(', '):'nothing usable'}. Check these against the packet.`+(res.note?` ${res.note}.`:'');
 }
-const WEB_KEYS=['name','variety','brand','category','sun','spacingIn','depthIn','germDays','dtm','indoorWeeks','transplantWeeks','directWeeks','method','notes','sourceUrl','sourceTitle'];
+const WEB_KEYS=['name','variety','brand','category','sun','spacingIn','depthIn','germDays','dtm','indoorWeeks','transplantWeeks','directWeeks','method','notes','instructions','sourceUrl','sourceTitle'];
 function webSeed(w){const o={};for(const k of WEB_KEYS)if(w[k]!==undefined&&w[k]!==null&&w[k]!=='')o[k]=w[k];
   for(const k of['spacingIn','depthIn','germDays','dtm','indoorWeeks','transplantWeeks','directWeeks'])o[k]=num(o[k]);return o}
 function webMsg(w){const miss=['dtm','depthIn','spacingIn','germDays','sun'].filter(k=>!(w.found||[]).includes(k));
@@ -645,7 +542,8 @@ function openEditor(s,message,isNew,cands){
   <div><label for="f-directWeeks">Direct sow (wks ±)</label><input id="f-directWeeks" value="${v('directWeeks')}"></div></div>
   <p class="hint">Weeks are counted from your last frost. Use a minus sign for weeks before it.</p>
   ${both?`<label for="f-method">How will you plant it?</label><select id="f-method"><option value="indoor" ${methodOf(s)==='indoor'?'selected':''}>Start indoors, then transplant</option><option value="direct" ${methodOf(s)==='direct'?'selected':''}>Sow directly outside</option></select>`:''}
-  <label for="f-notes">Packet notes</label><textarea id="f-notes">${v('notes')}</textarea>
+  <label for="f-instructions">Planting instructions</label><textarea id="f-instructions" rows="5" placeholder="Sowing and growing directions from the packet">${v('instructions')}</textarea>
+  <label for="f-notes">Plant notes</label><textarea id="f-notes" placeholder="Your own notes about this plant">${v('notes')}</textarea>
   <div id="edPrev"></div>
   <div class="row" style="margin-top:14px"><button class="btn" id="edSave">${saved?'Save changes':'Add to catalog'}</button><button class="btn alt" id="edCancel">Cancel</button>${saved?'<button class="btn del" id="edDel">Delete seed</button>':''}</div>
   ${s.barcode?`<p class="hint">Barcode ${esc(s.barcode)}</p>`:''}</div>`;
@@ -661,7 +559,7 @@ function openEditor(s,message,isNew,cands){
     try{const c=await fileToCanvas(f);const k=b.dataset.slot;ph[k]=await savePhoto(c);if(k==='frontPhoto')ph.thumb=shrink(c,160).toDataURL('image/jpeg',.7);
       b.classList.add('has');b.innerHTML=slot(k);hydrate(b)}catch(e){b.innerHTML='<span>Could not read that photo</span>'}
   });
-  const read=()=>{const o={...s,...ph};for(const k of['name','variety','brand','sun','category','notes','year'])o[k]=$('#f-'+k).value.trim();
+  const read=()=>{const o={...s,...ph};for(const k of['name','variety','brand','sun','category','notes','instructions','year'])o[k]=$('#f-'+k).value.trim();
     for(const k of['germDays','dtm','spacingIn','depthIn','indoorWeeks','transplantWeeks','directWeeks'])o[k]=num($('#f-'+k).value);
     if($('#f-method'))o.method=$('#f-method').value;else delete o.method;return o};
   if($('#edRead'))$('#edRead').onclick=async()=>{
@@ -716,6 +614,7 @@ function renderDetail(id){
   <span class="chip ${s.category==='flower'?'flower':''}">${esc(s.category||'plant')}</span>
   ${facts.length?`<dl class="facts">${facts.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`:''}
   <div class="card"><h3>Schedule for ${D(settings.lf).getFullYear()}</h3>${ev.length?`<dl class="sched">${ev.map(e=>`<dt>${fmt(e.date)}</dt><dd><span class="dot" style="background:${COL[e.kind]}"></span>${esc(e.kind)}</dd>`).join('')}</dl>`:'<p class="hint">Add timing in Edit to get planting dates.</p>'}</div>
+  <div class="card"><div class="head"><h3>Planting instructions</h3>${s.instructions?'':'<button class="btn alt sm" data-editfield="instructions">Add</button>'}</div>${s.instructions?`<p style="margin:0;white-space:pre-wrap">${esc(s.instructions)}</p>`:'<p class="hint" style="margin:0">Copy the sowing directions from the back of the packet, or use "Read details from packet photos" in Edit.</p>'}</div>
   <div class="card"><div class="head"><h3>Plant photos</h3><button class="btn alt sm" id="addPlant">Add photos</button></div>
   ${(s.plantPhotos||[]).length?`<div class="strip">${s.plantPhotos.slice().reverse().map(p=>pimg(p,'','Plant photo').replace('<img','<img data-view="plant"')).join('')}</div>`:'<p class="hint" style="margin:0">Photos of the growing plant, flowers and harvest go here.</p>'}</div>
   <div class="card"><div class="head"><h3>Planting journal</h3><button class="btn sm" id="jNew">New entry</button></div>
@@ -726,7 +625,7 @@ function renderDetail(id){
     <button class="link" data-jedit="${esc(j.id)}">Edit</button><button class="link del" data-jdel="${esc(j.id)}">Delete</button></div></article>`}).join('')
     :`<p class="hint" style="margin:0">No entries for ${detailYear} yet. Record sowing, sprouting, transplanting, pests, harvests — anything you want to remember next season.</p>`}</div>
   ${s.sourceUrl&&/^https:\/\//.test(s.sourceUrl)?`<p><a href="${esc(s.sourceUrl)}" target="_blank" rel="noopener" style="color:var(--leaf);font-weight:700">View on ${esc(s.brand||'the seed company site')} ↗</a></p>`:''}
-  ${s.notes?`<div class="card"><h3>Packet notes</h3><p style="margin:0;white-space:pre-wrap">${esc(s.notes)}</p></div>`:''}`;
+  <div class="card"><div class="head"><h3>Plant notes</h3>${s.notes?'':'<button class="btn alt sm" data-editfield="notes">Add</button>'}</div>${s.notes?`<p style="margin:0;white-space:pre-wrap">${esc(s.notes)}</p>`:'<p class="hint" style="margin:0">Your own notes about this plant.</p>'}</div>`;
   hydrate(el);
 }
 function openJournalForm(s,entry){
@@ -753,6 +652,7 @@ function openJournalForm(s,entry){
 $('#detail').addEventListener('click',async e=>{
   const s=findSeed(detailId);if(!s)return;const t=e.target;
   if(t.closest('#dEdit'))return openEditor(s,'',false);
+  const ef=t.closest('[data-editfield]');if(ef){openEditor(s,'',false);const f=$('#f-'+ef.dataset.editfield);if(f){f.scrollIntoView({block:'center'});f.focus()}return}
   const sideB=t.closest('[data-side]');
   if(sideB){const k=sideB.dataset.side;if((k==='front'?s.frontPhoto:s.backPhoto)){packetSide=k;renderDetail(s.id)}else addPacket(s,k);return}
   const addS=t.closest('[data-addside]');if(addS)return addPacket(s,addS.dataset.addside);

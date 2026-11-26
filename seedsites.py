@@ -297,6 +297,28 @@ def parse_timing(text):
     return out
 
 
+GROW_HEADINGS = re.compile(r"^(?:how to (?:grow|sow|plant)|growing (?:instructions|information|info|tips)|when to (?:grow|plant|sow)|"
+                           r"sowing(?: instructions| directions)?|planting (?:instructions|directions|information)|starting seeds?|"
+                           r"direct sowing|starting indoors)\b", re.I)
+
+
+def grow_instructions(lines):
+    """Text under a 'How to Grow' / 'Growing Instructions' style heading, as one paragraph."""
+    for i, l in enumerate(lines):
+        if GROW_HEADINGS.match(l) and len(l) < 45:
+            out = []
+            for nxt in lines[i + 1:i + 14]:
+                if len(nxt) < 45 and not re.search(r"[.!:]$|\d", nxt) and out:
+                    break  # next heading
+                if re.search(r"add to cart|reviews?|shipping|you may also like|related products", nxt, re.I):
+                    break
+                out.append(nxt)
+            text = re.sub(r"\s+", " ", " ".join(out)).strip()
+            if len(text) > 30:
+                return text[:900]
+    return ""
+
+
 def split_title(title, crop):
     """'Tomato Seeds, Cherokee Purple' / 'Basil Seeds (Organic) - Genovese' / 'Burpee's Big Boy Tomato' -> (name, variety)."""
     t = re.sub(r"\s+", " ", title).strip()
@@ -407,6 +429,9 @@ def parse_product(raw, url, site_key):
         res["directWeeks"] = 1 if t["_afterFrost"] else -4
     if desc:
         res["notes"] = re.split(r"(?<=[.!?])\s", desc.strip(), maxsplit=2)[0][:300]
+    instr = grow_instructions(lines)
+    if instr:
+        res["instructions"] = instr
     res["found"] = [k for k in ("dtm", "germDays", "depthIn", "spacingIn", "sun") if res.get(k) not in (None, "")]
     return res
 

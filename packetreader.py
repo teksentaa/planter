@@ -47,7 +47,9 @@ Answer with JSON only:
 "indoorWeeks":weeks BEFORE last frost to start indoors (positive) or null,
 "transplantWeeks":weeks relative to last frost to transplant (negative = before) or null,
 "directWeeks":weeks relative to last frost to sow outdoors (negative = before) or null,
-"year":packed-for or sell-by year or null,"notes":"one or two short growing tips from the packet"}
+"year":packed-for or sell-by year or null,
+"instructions":"the packet's sowing and growing directions, copied word for word as one paragraph, or empty",
+"notes":"the packet's short description of the plant (flavor, size, uses), or empty"}
 Convert fractions like 1/4 inch to 0.25. For ranges like 6-8 weeks use the middle."""
 
 
@@ -61,7 +63,7 @@ def read_vision(images_b64):
     a, b = text.find("{"), text.rfind("}")
     v = json.loads(text[a:b + 1])
     seed = {}
-    for k in ["name", "variety", "brand", "category", "sun", "notes"]:
+    for k in ["name", "variety", "brand", "category", "sun", "notes", "instructions"]:
         if isinstance(v.get(k), str) and v[k].strip():
             seed[k] = v[k].strip()
     for k in NUM_FIELDS + ["year"]:
@@ -124,6 +126,37 @@ PACKET_PATTERNS = {
     "spacingIn": [rf"({seedsites.NUMTOK})\s*(?:\"|”|″|in\.?|inch(?:es)?)\s*apart",
                   rf"(?:spacing|space plants|thin(?:\s+seedlings)?\s+to)\D{{0,15}}({seedsites.NUMTOK})\s*(?:\"|”|″|in\b|inch)"],
 }
+
+
+HEADINGS = re.compile(r"^(?:sowing|planting|how to (?:grow|sow|plant)|growing(?: instructions| tips)?|directions|to grow|"
+                      r"sowing (?:instructions|directions)|planting (?:instructions|directions)|culture|cultivation)\b\s*[:.-]?\s*", re.I)
+STOP_LINE = re.compile(r"packed for|sell by|net\s*wt|lot\b|www\.|\.com\b|©|seed count|germination\s*(?:rate|test)|tested|\b\d{11,13}\b", re.I)
+HOW_WORDS = re.compile(r"\b(sow|plant(?:ing)?|transplant|thin|harden|start (?:seeds )?indoors|keep (?:the )?soil|water|cover|"
+                       r"set out|space|germinat|seedlings|frost|mulch|stake|pinch|harvest)\b", re.I)
+
+
+def extract_instructions(lines):
+    """The packet's sowing directions as one paragraph: the block under a 'Sowing'/'How to grow' heading,
+    or else the sentences that give directions."""
+    def tidy(parts):
+        t = " ".join(parts)
+        t = re.sub(r"(\w)- (\w)", r"\1\2", t)          # re-join words hyphenated across lines
+        t = re.sub(r"\s+", " ", t).strip()
+        return t[:900]
+
+    for i, l in enumerate(lines):
+        if HEADINGS.match(l):
+            block = [HEADINGS.sub("", l).strip()]
+            for nxt in lines[i + 1:i + 16]:
+                if STOP_LINE.search(nxt) or (HEADINGS.match(nxt) and len(block) > 2):
+                    break
+                block.append(nxt)
+            text = tidy([b for b in block if b])
+            if len(text) > 25:
+                return text
+    sentences = re.split(r"(?<=[.!?])\s+", " ".join(l for l in lines if not STOP_LINE.search(l)))
+    picked = [x for x in sentences if HOW_WORDS.search(x) and 20 < len(x) < 300 and not re.match(r"^(days|seed depth|plant spacing|sun)\b", x, re.I)]
+    return tidy(picked[:5]) if picked else ""
 
 
 def parse_packet_text(texts):
@@ -223,6 +256,12 @@ def parse_packet_text(texts):
     if "directWeeks" not in t and not seed.get("indoorWeeks") and (t["_afterFrost"] or t["_soilWorked"]) and seed.get("directWeeks") is None:
         seed["directWeeks"] = 1 if t["_afterFrost"] else -4
         stated.append("directWeeks")
+    # Tesseract reads each photo twice (two layouts); use the first pass's lines for the instructions.
+    first = [re.sub(r"\s+", " ", l).strip() for l in (texts[0] if texts else "").splitlines()]
+    instr = extract_instructions([l for l in first if len(l) > 1] or lines)
+    if instr:
+        seed["instructions"] = instr
+        stated.append("instructions")
     return {"engine": "Tesseract text recognition", "seed": seed, "stated": sorted(set(stated)), "text": joined[:4000]}
 
 

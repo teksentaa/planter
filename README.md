@@ -1,6 +1,6 @@
 # Seed Packet Planner
 
-Self-hosted seed catalog and planting planner for phone and PC: scan seed packet barcodes, look up growing details on seed company sites, keep packet and plant photos and a planting journal, build a planting schedule from your frost dates, and sync everything to a home server over Tailscale.
+Self-hosted seed catalog and planting planner for phone and PC: photograph the back of a seed packet and have your server read it, look up growing details on seed company sites, keep packet and plant photos and a planting journal, build a planting schedule from your frost dates, and sync everything to a home server over Tailscale.
 
 ```
 SEED PACKET PLANNER — home server with sync
@@ -26,10 +26,10 @@ ON YOUR PHONE AND PC
     copy, then Restore backup in the new one. Restored seeds upload to the server.
 
 SEED COMPANY LOOKUPS (no Claude key needed)
-  When you scan or type a seed, the server looks it up on Baker Creek (rareseeds.com),
+  When you add a seed (by packet photo or by name), the server looks it up on Baker Creek (rareseeds.com),
   Eden Brothers, Burpee, Johnny's Selected Seeds and Victory Seeds, and fills in days to
   maturity, days to sprout, depth, spacing, sun and timing from the product page.
-  - Pick the company on the Scan tab for a faster, more accurate match.
+  - Pick the company on the Add tab for a faster, more accurate match.
   - "Not the right one?" on the review screen lists other matches.
   - Anything a page doesn't list falls back to typical values for that plant.
   - Pages are cached for 30 days, with a short pause between requests, and each site's
@@ -41,9 +41,9 @@ SEED COMPANY LOOKUPS (no Claude key needed)
   (Run these as root or with SEED_DB=/tmp/test.db in front, so they can write their cache.)
 
 READ PACKET PHOTOS ON YOUR SERVER (no cloud)
-  Packets without a barcode, or that no seed site knows: the server reads the photo itself.
-  - Photograph the packet (Scan > Photograph the packet instead). The back is best: it has
-    days to maturity, depth, spacing and timing. The app reads it, then searches your seed
+  Every packet photo is read on the server itself, with no cloud service.
+  - Add tab > Photograph the back. The back of the packet has
+    days to maturity, depth, spacing, timing and planting instructions. The app reads it, then searches your seed
     companies with the name it found to fill anything still missing.
   - In the editor, "Read details from packet photos" re-reads the front and back photos.
     Packet values fill empty fields; timing printed on the packet replaces typical timing.
@@ -73,6 +73,8 @@ EVERYDAY COMMANDS
   Stop sharing:    sudo tailscale serve --https=8443 off
 
 SEED PAGES, PHOTOS AND JOURNAL
+  Each seed has Planting instructions (filled from the packet or the seed company's
+  growing guide) and Plant notes (your own notes).
   Tap a seed in My seeds to open its page: front-of-packet photo (tap Back to switch),
   growing details, this season's schedule, plant photos and a planting journal by year.
   Edit (top right) changes details and replaces the packet photos.
