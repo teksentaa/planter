@@ -97,6 +97,8 @@ img.missing{min-height:40px}
 .pslot{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:4/3;border:2px dashed var(--line);border-radius:12px;background:var(--leafbg);color:var(--leaf);font-weight:700;cursor:pointer;overflow:hidden;text-align:center;padding:8px}
 .pslot.has{border-style:solid;padding:0}.pslot img{width:100%;height:100%;object-fit:cover}
 .pslot:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.camctl{margin-top:10px}.zoom{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;margin:0;flex:1 1 160px}
+.zoom input{flex:1;min-height:auto;padding:0;border:0;background:none;accent-color:var(--leaf)}
 .prev{width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:var(--leafbg);margin-top:10px}
 </style>
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js" defer></script>
@@ -120,6 +122,12 @@ img.missing{min-height:40px}
     </div>
     <div class="ret" id="ret" hidden></div>
   </div>
+  <div class="row camctl" id="camCtl" hidden>
+    <button class="btn alt sm" id="camSwitch">Switch camera</button>
+    <button class="btn alt sm" id="camTorch" hidden>Light</button>
+    <label class="zoom" id="camZoomWrap" hidden>Zoom <input type="range" id="camZoom" min="1" max="4" step="0.1" value="1"></label>
+  </div>
+  <p class="hint" id="camInfo"></p>
   <div class="row" style="margin-top:12px">
     <button class="btn alt" id="stopCam" hidden>Stop scanner</button>
     <button class="btn alt" id="snapBtn">Photograph the packet instead</button>
@@ -129,7 +137,7 @@ img.missing{min-height:40px}
   <div class="card">
     <h3>Type it in</h3>
     <label for="typed">Plant or variety</label>
-    <input id="typed" list="cropList" placeholder="e.g. Cherokee Purple tomato" autocomplete="off">
+    <input id="typed" list="cropList" placeholder="e.g. Cherokee Purple tomato, or the barcode number" autocomplete="off">
     <label for="site">Seed company</label>
     <select id="site"><option value="">Any of my seed companies</option><option value="bakercreek">Baker Creek (rareseeds.com)</option><option value="eden">Eden Brothers</option><option value="burpee">Burpee</option><option value="johnnys">Johnny's Selected Seeds</option><option value="victory">Victory Seeds</option></select>
     <p class="hint">Also used when you scan a barcode. Pick the company to get a faster, more accurate match.</p>
@@ -377,31 +385,104 @@ function route(){const h=location.hash.slice(1);let v=['scan','seeds','calendar'
 addEventListener('hashchange',route);
 
 // ---------- live scanner ----------
-const video=$('#video');let stream=null,zx=null,loop=null,scanning=false;
-async function startScan(){
+// Picks the phone's main back lens (the ultra-wide one can't focus up close), asks for HD with
+// continuous focus, and reads frames with the browser's barcode reader, falling back to ZXing.
+const video=$('#video');let stream=null,track=null,loop=null,scanning=false,busyFrame=false;
+const FORMATS=['upc_a','upc_e','ean_13','ean_8'];
+let det=null,engine='',cams=[],zxReader=null,tick=0;
+const CAMKEY='seedPlanner.camera';
+async function makeDetector(){
+  if(!('BarcodeDetector'in window))return null;
+  try{const sup=await BarcodeDetector.getSupportedFormats();const f=FORMATS.filter(x=>sup.includes(x));return f.length?new BarcodeDetector({formats:f}):null}catch(e){return null}
+}
+function makeZx(){
+  if(!window.ZXing)return null;
+  try{const hints=new Map();hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E,ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8]);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER,true);const r=new ZXing.MultiFormatReader();r.setHints(hints);return r}catch(e){return null}
+}
+async function backCameras(){
+  const all=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+  const back=all.filter(d=>/back|rear|environment/i.test(d.label));
+  return back.length?back:all;
+}
+function mainCamera(list){ // Android names the main lens "camera2 0, facing back"; others come later
+  return list.find(d=>/camera2 0\b|camera 0\b/i.test(d.label))||list[0];
+}
+async function openStream(deviceId){
+  const v={width:{ideal:1920},height:{ideal:1080}};
+  if(deviceId)v.deviceId={exact:deviceId};else v.facingMode={ideal:'environment'};
+  const st=await navigator.mediaDevices.getUserMedia({video:v,audio:false});
+  const tr=st.getVideoTracks()[0];
+  try{await tr.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(e){}
+  return [st,tr];
+}
+function closeStream(){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;track=null;video.srcObject=null}
+function setupControls(){
+  const caps=track&&track.getCapabilities?track.getCapabilities():{};
+  $('#camTorch').hidden=!caps.torch;$('#camTorch').dataset.on='';$('#camTorch').textContent='Light';
+  const z=$('#camZoom');
+  if(caps.zoom&&caps.zoom.max>caps.zoom.min){$('#camZoomWrap').hidden=false;z.min=caps.zoom.min;z.max=Math.min(caps.zoom.max,6);z.step=caps.zoom.step||0.1;
+    const cur=(track.getSettings().zoom)||caps.zoom.min;z.value=cur}else $('#camZoomWrap').hidden=true;
+  $('#camSwitch').hidden=cams.length<2;$('#camCtl').hidden=false;
+  const set=track.getSettings?track.getSettings():{};
+  const lbl=(cams.find(c=>c.deviceId===set.deviceId)||{}).label||track.label||'camera';
+  $('#camInfo').textContent=`${lbl.replace(/\s*\(.*?\)\s*/g,'')} · ${set.width||video.videoWidth}×${set.height||video.videoHeight} · reader: ${engine}${cams.length>1?` · ${cams.length} back cameras`:''}`;
+}
+async function startScan(useId){
   $('#camMsg').textContent='';
   try{
-    if('BarcodeDetector'in window){
-      const det=new BarcodeDetector({formats:['upc_a','upc_e','ean_13','ean_8']});
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
-      video.srcObject=stream;await video.play();
-      loop=setInterval(async()=>{try{const r=await det.detect(video);if(r[0])found(r[0].rawValue)}catch(e){}},250);
-    }else if(window.ZXing){
-      const hints=new Map();hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E,ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8]);
-      zx=new ZXing.BrowserMultiFormatReader(hints);
-      await zx.decodeFromConstraints({video:{facingMode:'environment'}},video,res=>{if(res)found(res.getText())});
-    }else throw new Error('nolib');
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('nocam');
+    det=await makeDetector();zxReader=makeZx();
+    engine=det&&zxReader?'built-in + ZXing':det?'built-in':zxReader?'ZXing':'';
+    if(!engine)throw new Error('nolib');
+    let saved='';try{saved=localStorage.getItem(CAMKEY)||''}catch(e){}
+    [stream,track]=await openStream(useId||saved||null);
+    cams=await backCameras(); // labels are only available once camera access is granted
+    const want=useId||(cams.some(c=>c.deviceId===saved)?saved:(mainCamera(cams)||{}).deviceId);
+    const cur=track.getSettings?track.getSettings().deviceId:'';
+    if(want&&cur&&want!==cur){closeStream();[stream,track]=await openStream(want)}
+    video.srcObject=stream;await video.play();
     scanning=true;$('#camIdle').hidden=true;$('#ret').hidden=false;$('#stopCam').hidden=false;
+    setupControls();
+    loop=setInterval(readFrame,180);
   }catch(e){
     stopScan();
-    $('#camMsg').textContent=e&&e.name==='NotAllowedError'?'Camera access was blocked. Allow it in your browser settings, or photograph the packet instead.':'The scanner could not start here. Photograph the packet instead.';
+    $('#camMsg').textContent=e&&e.name==='NotAllowedError'?'Camera access was blocked. Allow it in your browser settings, or photograph the packet instead.':
+      e&&e.name==='OverconstrainedError'?'That camera could not start. Tap Start scanner again.':'The scanner could not start here. Photograph the packet instead.';
+    if(e&&e.name==='OverconstrainedError')try{localStorage.removeItem(CAMKEY)}catch(x){}
   }
 }
+const frameCanvas=document.createElement('canvas');
+async function readFrame(){
+  if(!scanning||busyFrame||!video.videoWidth)return;busyFrame=true;tick++;
+  try{
+    // Built-in reader on the full frame; every other tick also try ZXing on the centre strip (where the guide box is).
+    if(det){const r=await det.detect(video);if(r[0]&&r[0].rawValue){found(r[0].rawValue);return}}
+    if(zxReader&&(!det||tick%2===0)){
+      const w=video.videoWidth,h=video.videoHeight,cw=Math.round(w*.8),ch=Math.round(h*.45);
+      frameCanvas.width=cw;frameCanvas.height=ch;
+      frameCanvas.getContext('2d',{willReadFrequently:true}).drawImage(video,(w-cw)/2,(h-ch)/2,cw,ch,0,0,cw,ch);
+      try{const src=new ZXing.HTMLCanvasElementLuminanceSource(frameCanvas);const res=zxReader.decodeWithState(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src)));
+        if(res&&res.getText()){found(res.getText());return}}catch(e){} // NotFoundException on most frames
+    }
+  }catch(e){}finally{busyFrame=false}
+}
 function grabFrame(){if(!video.videoWidth)return null;const c=document.createElement('canvas');c.width=video.videoWidth;c.height=video.videoHeight;c.getContext('2d').drawImage(video,0,0);return c}
-function stopScan(){clearInterval(loop);loop=null;try{zx&&zx.reset()}catch(e){}zx=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;scanning=false;
-  $('#camIdle').hidden=false;$('#ret').hidden=true;$('#stopCam').hidden=true}
+function stopScan(){clearInterval(loop);loop=null;closeStream();scanning=false;
+  $('#camIdle').hidden=false;$('#ret').hidden=true;$('#stopCam').hidden=true;$('#camCtl').hidden=true;$('#camInfo').textContent=''}
 async function found(code){if(!scanning)return;scanning=false;const frame=grabFrame();stopScan();if(navigator.vibrate)navigator.vibrate(60);process({code,canvas:frame})}
-$('#startCam').onclick=startScan;$('#stopCam').onclick=stopScan;
+$('#startCam').onclick=()=>startScan();$('#stopCam').onclick=stopScan;
+$('#camSwitch').onclick=async()=>{
+  if(cams.length<2)return;const cur=track&&track.getSettings?track.getSettings().deviceId:'';
+  const i=cams.findIndex(c=>c.deviceId===cur);const next=cams[(i+1)%cams.length].deviceId;
+  try{localStorage.setItem(CAMKEY,next)}catch(e){}
+  clearInterval(loop);closeStream();scanning=false;startScan(next);
+};
+$('#camTorch').onclick=async function(){const on=!this.dataset.on;try{await track.applyConstraints({advanced:[{torch:on}]});this.dataset.on=on?'1':'';this.textContent=on?'Light off':'Light'}catch(e){}};
+$('#camZoom').oninput=async e=>{try{await track.applyConstraints({advanced:[{zoom:+e.target.value}]})}catch(x){}};
+$('#video').onclick=async()=>{ // tap to refocus where supported
+  if(!track)return;try{await track.applyConstraints({advanced:[{focusMode:'single-shot'}]});setTimeout(()=>track&&track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{}),800)}catch(e){}
+};
 
 // ---------- photo path ----------
 $('#snapBtn').onclick=()=>$('#photo').click();
@@ -483,7 +564,8 @@ function webMsg(w){const miss=['dtm','depthIn','spacingIn','germDays','sun'].fil
   return `Found on ${w.brand}: "${w.sourceTitle}". `+(miss.length?`The page didn't list ${miss.map(k=>names[k]).join(', ')}, so check the packet for those. `:'')+'Timing uses the page where it says, otherwise typical timing for the plant.'}
 try{$('#site').value=localStorage.getItem('seedPlanner.site')||''}catch(e){}
 $('#site').onchange=()=>{try{localStorage.setItem('seedPlanner.site',$('#site').value)}catch(e){}};
-$('#typedGo').onclick=()=>{const t=$('#typed').value.trim();if(!t)return;$('#typed').value='';process({text:t})};
+$('#typedGo').onclick=()=>{const t=$('#typed').value.trim();if(!t)return;$('#typed').value='';
+  const digits=t.replace(/[\s-]/g,'');if(/^\d{8,14}$/.test(digits))process({code:digits});else process({text:t})};
 $('#typed').onkeydown=e=>{if(e.key==='Enter')$('#typedGo').click()};
 
 // ---------- editor ----------
