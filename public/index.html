@@ -184,6 +184,7 @@ img.missing{min-height:40px}
     <input id="key" type="password" autocomplete="off" placeholder="sk-ant-…">
     <div class="row" style="margin-top:12px"><button class="btn" id="keySave">Save key</button><button class="btn alt" id="keyDel">Remove</button></div>
     <p class="hint" id="keyMsg">The key stays in this browser only.</p>
+    <p class="hint" id="readerMsg"></p>
   </div>
   <div class="card">
     <h3>Backup and move devices</h3>
@@ -242,7 +243,7 @@ const yr=today.getFullYear()+(today.getMonth()>5?1:0);
 const LS='seedPlanner.v1',LSK='seedPlanner.key';
 // seeds: live records. tombs: deleted markers kept until the server has them. dirty: ids changed here and not yet synced.
 let seeds=[],tombs=[],dirty=new Set(),settings={id:'settings',lf:yr+'-04-15',ff:yr+'-10-15',zip:'',set:false,updatedAt:0},apiKey='';
-let server=false,serverClaude=false,syncing=null;
+let server=false,serverClaude=false,serverReader={ocr:false,vision:''},syncing=null;
 try{const o=JSON.parse(localStorage.getItem(LS)||'{}');if(o.seeds)seeds=o.seeds;if(o.tombs)tombs=o.tombs;if(o.dirty)dirty=new Set(o.dirty);
   if(o.settings)settings={...settings,...o.settings,id:'settings'};apiKey=localStorage.getItem(LSK)||''}catch(e){}
 function persist(){try{localStorage.setItem(LS,JSON.stringify({seeds,tombs,settings,dirty:[...dirty]}))}catch(e){alert('Could not save. Your browser storage may be full.')}}
@@ -258,7 +259,7 @@ function applyState(st){
   for(const[id,r]of local)if(id!=='settings')(r.deleted?nextTombs:next).push(r);
   seeds=next.sort((a,b)=>b.id.localeCompare(a.id));tombs=nextTombs.filter(t=>dirty.has(t.id));
   if(st.settings&&(!dirty.has('settings')||(st.settings.updatedAt||0)>=(settings.updatedAt||0)))settings={...settings,...st.settings,id:'settings'};
-  serverClaude=!!st.claude;persist();render();
+  serverClaude=!!st.claude;serverReader=st.reader||serverReader;persist();render();
 }
 async function sync(){
   if(!server)return;
@@ -371,6 +372,7 @@ function render(){
   }
   $('#cal').innerHTML=html||'<div class="empty">Your planting dates appear here once you add seeds.</div>';
   $('#keyMsg').textContent=serverClaude&&!apiKey?'Claude is set up on your server for all your devices. No key needed here.':(apiKey?'Key saved in this browser.':'The key stays in this browser only.');$('#lf').value=settings.lf;$('#ff').value=settings.ff;$('#zip').value=settings.zip||'';$('#key').value=apiKey;
+  $('#readerMsg').textContent=!server?'':`Packet photo reading on your server: ${serverReader.vision?`vision model ${serverReader.vision}`+(serverReader.ocr?', with Tesseract as backup':''):serverReader.ocr?'Tesseract text recognition':'not set up (run install.sh again)'}.`;
   if(detailId&&location.hash==='#seed-'+detailId&&!detailBusy)renderDetail(detailId);
   hydrate();
 }
@@ -539,7 +541,23 @@ async function process({code,canvas,text}){
   const crop=matchCrop(lbl);
   let seed={...(crop||{name:text||'',category:'vegetable'}),brand:product?product.brand:'',variety:'',notes:product?product.title:''},msg;
   if(web){seed=webSeed(web);msg=webMsg(web)}
-  else if(canClaude()){
+  else if(canvas&&canReadPacket()){
+    status('Reading the packet photo on your server…');
+    try{
+      const res=await readPacket([canvasB64(canvas)]);
+      const base=crop||res.seed.name?{}:{name:text||''};
+      const m=mergePacket({...base,brand:product?product.brand:'',notes:product?product.title:''},res);
+      seed={...seed,...m.seed};msg=packetMsg(res,m.used);
+      if(m.seed.name){ // now search the seed companies with what the packet says
+        status(`Looking up ${[m.seed.variety,m.seed.name].filter(Boolean).join(' ')} on your seed companies' sites…`);
+        try{const r=await fetch('api/lookup?'+new URLSearchParams({q:[m.seed.variety,m.seed.name].filter(Boolean).join(' '),brand:m.seed.brand||'',site:$('#site').value}));
+          const j=await r.json();
+          if(j.result){const w=webSeed(j.result);for(const[k,v]of Object.entries(w))if(seed[k]===undefined||seed[k]===null||seed[k]===''||k==='sourceUrl'||k==='sourceTitle')seed[k]=v;
+            cands=j.candidates||[];msg+=` Filled the rest from ${j.result.brand}: "${j.result.sourceTitle}".`}}catch(e){}
+      }
+    }catch(e){msg=`Couldn't read the packet photo: ${e.message}`}
+  }
+  if(!msg&&canClaude()){
     try{
       const content=[];
       if(canvas){const b64=shrink(canvas,1200).toDataURL('image/jpeg',.8).split(',')[1];content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}})}
@@ -555,6 +573,36 @@ async function process({code,canvas,text}){
   if(canvas)try{const pid=await savePhoto(canvas);if(code)backPhoto=pid;else frontPhoto=pid}catch(e){}
   $('#scanOut').innerHTML='';
   openEditor({...seed,barcode:code||'',thumb:frontPhoto?thumb:'',frontPhoto,backPhoto,id:'s-'+Date.now().toString(36)},msg,true,cands);
+}
+const canReadPacket=()=>server&&(serverReader.ocr||!!serverReader.vision);
+const TIMING_KEYS=['indoorWeeks','transplantWeeks','directWeeks'];
+const FIELD_NAMES={name:'plant',variety:'variety',brand:'brand',dtm:'days to maturity',germDays:'days to sprout',depthIn:'depth',spacingIn:'spacing',sun:'sun',indoorWeeks:'start-indoors timing',transplantWeeks:'transplant timing',directWeeks:'direct-sow timing',year:'packet year'};
+const canvasB64=c=>shrink(c,1600).toDataURL('image/jpeg',.85).split(',')[1];
+async function photoB64(id){
+  let blob=null;const rec=await idbGet(id);if(rec&&rec.blob)blob=rec.blob;
+  else if(server){const r=await fetch('api/photos/'+encodeURIComponent(id));if(r.ok)blob=await r.blob()}
+  if(!blob)return null;
+  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(blob)});
+  const b=canvasB64(img);URL.revokeObjectURL(img.src);return b;
+}
+async function readPacket(images){
+  const r=await fetch('api/read-packet',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({images})});
+  const j=await r.json().catch(()=>({error:'No answer from the server.'}));if(!r.ok||j.error)throw new Error(j.error||`Reading failed (${r.status}).`);return j;
+}
+// Packet values fill empty fields; timing printed on the packet replaces typical timing.
+function mergePacket(cur,res){
+  const out={...cur},used=[];const ps=res.seed||{},stated=new Set(res.stated||[]);
+  for(const[k,v]of Object.entries(ps)){
+    if(v===null||v===undefined||v==='')continue;
+    const empty=out[k]===undefined||out[k]===null||out[k]==='';
+    if(empty||(TIMING_KEYS.includes(k)&&stated.has(k))||(k==='method'&&stated.has('indoorWeeks'))){if(out[k]!==v&&stated.has(k))used.push(k);out[k]=v}
+  }
+  if(ps.method==='indoor'&&stated.has('indoorWeeks'))out.directWeeks=ps.directWeeks??null;
+  return {seed:out,used};
+}
+function packetMsg(res,used){
+  const n=used.filter(k=>FIELD_NAMES[k]).map(k=>FIELD_NAMES[k]);
+  return `Read from the packet photo (${res.engine}): ${n.length?n.join(', '):'nothing usable'}. Check these against the packet.`+(res.note?` ${res.note}.`:'');
 }
 const WEB_KEYS=['name','variety','brand','category','sun','spacingIn','depthIn','germDays','dtm','indoorWeeks','transplantWeeks','directWeeks','method','notes','sourceUrl','sourceTitle'];
 function webSeed(w){const o={};for(const k of WEB_KEYS)if(w[k]!==undefined&&w[k]!==null&&w[k]!=='')o[k]=w[k];
@@ -584,6 +632,7 @@ function openEditor(s,message,isNew,cands){
   ${(cands||[]).length>1||((cands||[]).length===1&&cands[0].url!==s.sourceUrl)?`<label for="f-alt">Not the right one?</label><select id="f-alt"><option value="">Other matches (${cands.filter(c=>c.url!==s.sourceUrl).length})</option>${cands.filter(c=>c.url!==s.sourceUrl).map(c=>`<option value="${esc(c.url)}" data-site="${esc(c.site)}">${esc(c.title)} · ${esc(c.siteName)}</option>`).join('')}</select>`:''}
   <div class="g2">${['frontPhoto','backPhoto'].map(k=>`<div><label>${k==='frontPhoto'?'Front of packet':'Back of packet'}</label><button type="button" class="pslot ${ph[k]?'has':''}" data-slot="${k}">${slot(k)}</button></div>`).join('')}</div>
   <p class="hint">Tap a photo to take or replace it. The front is shown on the seed's page.</p>
+  ${canReadPacket()?`<div class="row" style="margin-top:8px"><button type="button" class="btn alt sm" id="edRead">Read details from packet photos</button><span class="hint" id="edReadMsg"></span></div>`:''}
   <div class="g2">${[['name','Plant'],['variety','Variety'],['brand','Brand'],['sun','Sun']].map(([k,l])=>`<div><label for="f-${k}">${l}</label><input id="f-${k}" value="${v(k)}"></div>`).join('')}
   <div><label for="f-category">Type</label><select id="f-category">${['vegetable','flower','herb','fruit'].map(c=>`<option ${s.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
   <div><label for="f-year">Packet year</label><input id="f-year" inputmode="numeric" value="${v('year')||today.getFullYear()}"></div></div>
@@ -615,6 +664,18 @@ function openEditor(s,message,isNew,cands){
   const read=()=>{const o={...s,...ph};for(const k of['name','variety','brand','sun','category','notes','year'])o[k]=$('#f-'+k).value.trim();
     for(const k of['germDays','dtm','spacingIn','depthIn','indoorWeeks','transplantWeeks','directWeeks'])o[k]=num($('#f-'+k).value);
     if($('#f-method'))o.method=$('#f-method').value;else delete o.method;return o};
+  if($('#edRead'))$('#edRead').onclick=async()=>{
+    const ids=[ph.backPhoto,ph.frontPhoto].filter(Boolean);const m=$('#edReadMsg');
+    if(!ids.length){m.textContent='Add a photo of the back of the packet first.';return}
+    const btn=$('#edRead');btn.disabled=true;m.textContent='Reading… this can take up to a minute.';
+    try{
+      const imgs=(await Promise.all(ids.map(photoB64))).filter(Boolean);if(!imgs.length)throw new Error('The photos are not available on this device yet.');
+      const res=await readPacket(imgs);const cur=read();const mg=mergePacket(cur,res);
+      for(const k of mg.used){const el=$('#f-'+k);if(!el)continue;el.value=mg.seed[k]??'';el.style.outline='2px solid var(--sun)'}
+      if(mg.used.includes('name')&&res.seed.category&&$('#f-category'))$('#f-category').value=res.seed.category;
+      m.textContent=packetMsg(res,mg.used).replace('Check these against the packet.','Highlighted fields changed; check them against the packet.');prev();
+    }catch(e){m.textContent=e.message}finally{btn.disabled=false}
+  };
   const prev=()=>{const ev=events(read());$('#edPrev').innerHTML=ev.length?`<div class="note"><b>Schedule</b><br>${ev.map(e=>`${esc(e.kind)}: ${fmt(e.date)}`).join('<br>')}</div>`:'<div class="note">Add a timing value to get planting dates.</div>'};
   $('#ed').addEventListener('input',prev);prev();
   const done=()=>{detailBusy=false};

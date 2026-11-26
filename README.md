@@ -40,6 +40,26 @@ SEED COMPANY LOOKUPS (no Claude key needed)
     python3 server.py --lookup https://www.rareseeds.com/products/tomato-cherokee-purple
   (Run these as root or with SEED_DB=/tmp/test.db in front, so they can write their cache.)
 
+READ PACKET PHOTOS ON YOUR SERVER (no cloud)
+  Packets without a barcode, or that no seed site knows: the server reads the photo itself.
+  - Photograph the packet (Scan > Photograph the packet instead). The back is best: it has
+    days to maturity, depth, spacing and timing. The app reads it, then searches your seed
+    companies with the name it found to fill anything still missing.
+  - In the editor, "Read details from packet photos" re-reads the front and back photos.
+    Packet values fill empty fields; timing printed on the packet replaces typical timing.
+  Engines:
+  - Tesseract text recognition: installed by install.sh. Any CPU, 1-3 seconds a photo.
+    Best on flat, well-lit packet backs.
+  - Local vision model (optional, better on decorative fronts and glossy packets):
+      curl -fsSL https://ollama.com/install.sh | sh
+      ollama pull qwen2.5vl:7b            # about 6 GB; suits an 8 GB graphics card
+      sudo nano /etc/seed-planner.env      # set VISION_MODEL=qwen2.5vl:7b
+      sudo systemctl restart seed-planner
+    Without a graphics card it still works, but takes a minute or more per packet.
+    If the model is down, the server falls back to Tesseract automatically.
+  Status: Garden tab shows which engine is active.
+  Test from the server:  python3 /opt/seed-planner/server.py --read-packet back.jpg [front.jpg]
+
 LET CLAUDE READ PACKET PHOTOS (optional, for every device at once)
   sudo nano /etc/seed-planner.env      put your key after ANTHROPIC_API_KEY=
   sudo systemctl restart seed-planner
@@ -74,6 +94,7 @@ USE A DIFFERENT PORT
 FILES
   server.py              the sync server (Python standard library only, no pip installs)
   seedsites.py           seed company lookups
+  packetreader.py        packet photo reading (Tesseract / Ollama vision model)
   tests/                 python3 -m unittest discover -s tests
   public/                the web app
   seed-planner.service   systemd service (runs as a locked-down "seedplanner" user)

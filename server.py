@@ -23,6 +23,7 @@ import urllib.parse
 import urllib.request
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
+import packetreader
 import seedsites
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -91,7 +92,7 @@ def read_state(con):
             settings = rec
         else:
             seeds.append(rec)
-    return {"seeds": seeds, "settings": settings, "claude": bool(API_KEY), "time": time.time() * 1000}
+    return {"seeds": seeds, "settings": settings, "claude": bool(API_KEY), "reader": packetreader.status(), "time": time.time() * 1000}
 
 
 def merge(con, records):
@@ -249,6 +250,15 @@ class Handler(SimpleHTTPRequestHandler):
                 finally:
                     con.close()
 
+        if url.path == "/api/read-packet":
+            imgs = body.get("images") if isinstance(body, dict) else None
+            if not isinstance(imgs, list) or not imgs or not all(isinstance(x, str) for x in imgs):
+                return self.send_json({"error": "send images as a list of base64 JPEGs"}, 400)
+            try:
+                return self.send_json(packetreader.read(imgs[:3]))
+            except Exception as e:
+                return self.send_json({"error": str(e)[:300]}, 503)
+
         if url.path == "/api/claude":
             if not API_KEY:
                 return self.send_json({"error": "no API key on server"}, 503)
@@ -275,6 +285,13 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 2 and sys.argv[1] == "--read-packet":
+        # Command-line test:  python3 server.py --read-packet back.jpg [front.jpg]
+        import base64
+        out = packetreader.read([base64.b64encode(open(f, "rb").read()).decode() for f in sys.argv[2:]])
+        print(json.dumps({k: v for k, v in out.items() if k != "text"}, indent=2))
+        print("\n--- text read from the photo ---\n" + out.get("text", "")[:1500])
+        sys.exit(0)
     if len(sys.argv) > 2 and sys.argv[1] == "--lookup":
         # Command-line test:  python3 server.py --lookup "cherokee purple tomato" [bakercreek|eden|burpee|victory|johnnys]
         #                     python3 server.py --lookup https://www.rareseeds.com/products/tomato-cherokee-purple
