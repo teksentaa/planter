@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Seed Packet Planner</title>
+<meta name="theme-color" content="#1f5a32">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Seed Planner">
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;--bg:light-dark(#fbfcf8,#0e1811);--ink:light-dark(#18261b,#e6eee4);--mut:light-dark(#5a6b5d,#9fb3a3);--leaf:light-dark(#1f5a32,#83cf97);--leafbg:light-dark(#e6f0e4,#183222);--sun:#f0a202;--card:light-dark(#fff,#15231a);--line:light-dark(#dde5d8,#29402f);--red:light-dark(#b3261e,#ff8a80)}
+*{box-sizing:border-box;min-width:0}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Figtree,system-ui,sans-serif;overflow-x:clip;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+h1,h2,h3{font-family:"Young Serif",Georgia,serif;font-weight:400;line-height:1.1;text-wrap:balance;margin:0}
+h1{font-size:22px}h2{font-size:30px;margin-bottom:6px}h3{font-size:19px;margin-bottom:6px}
+header{display:flex;align-items:center;gap:10px;padding:calc(14px + env(safe-area-inset-top)) 18px 14px;border-bottom:1px solid var(--line)}
+main{max-width:640px;margin:0 auto;padding:20px 18px}
+.view{display:none}.view.on{display:block}
+.lead{color:var(--mut);margin:0 0 18px}
+nav{position:fixed;inset:auto 0 0 0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 10px;color:var(--mut);text-decoration:none;font-size:13px;font-weight:600;min-height:56px}
+nav a.on{color:var(--leaf)}nav svg{width:22px;height:22px}
+.cam{position:relative;aspect-ratio:4/3;border-radius:18px;overflow:hidden;background:#1f5a32;border:2px solid var(--leaf)}
+.cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam .ret{position:absolute;left:12%;right:12%;top:32%;height:36%;border:3px solid var(--sun);border-radius:12px;pointer-events:none}
+.cam .idle{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#fbfcf8;text-align:center;padding:20px}
+.bars{display:flex;gap:3px;height:60px;align-items:stretch}.bars i{background:#fbfcf8;display:block}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{font:600 16px Figtree,sans-serif;min-height:46px;padding:0 18px;border-radius:12px;border:1.5px solid var(--leaf);background:var(--leaf);color:var(--bg);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.btn.alt{background:transparent;color:var(--leaf)}.btn.del{background:transparent;color:var(--red);border-color:var(--red)}
+.btn.sun{background:var(--sun);border-color:var(--sun);color:#18261b}
+.btn:disabled{opacity:.5}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0}
+.status{display:flex;gap:10px;align-items:center;color:var(--mut);margin:12px 0}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--sun);border-top-color:transparent;animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin{animation:none}}
+label{display:block;font-weight:600;font-size:14px;margin:12px 0 4px}
+input,select,textarea{width:100%;font:16px Figtree,sans-serif;padding:11px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);min-height:46px}
+textarea{min-height:80px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 10px;align-items:end}
+.hint{font-size:13px;color:var(--mut);margin:4px 0 0}
+.chip{display:inline-block;font-size:13px;font-weight:600;padding:2px 10px;border-radius:99px;background:var(--leafbg);color:var(--leaf)}
+.chip.flower{background:light-dark(#fdf0d2,#3a2c0c);color:light-dark(#8a5a00,#f5c451)}
+.seed{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:0;cursor:pointer}
+.thumb{flex:none;width:58px;height:58px;border-radius:10px;object-fit:cover;background:var(--leafbg)}
+.seed b{display:block;font-size:17px}.next{font-size:14px;color:var(--mut);display:block;margin-top:4px}
+.month{font-family:"Young Serif",serif;font-size:20px;margin:26px 0 6px;padding-bottom:6px;border-bottom:2px solid var(--leaf)}
+.ev{display:grid;grid-template-columns:62px minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.ev .d{font-family:"Young Serif",serif;font-size:26px;line-height:1;white-space:nowrap}.ev .d small{display:block;font:600 12px Figtree,sans-serif;color:var(--mut);margin-top:3px}
+.ev a{font-size:14px;color:var(--leaf);font-weight:600}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.empty{text-align:center;color:var(--mut);padding:30px 10px}
+.note{background:var(--leafbg);border-radius:12px;padding:12px 14px;font-size:15px;margin:12px 0}
+.warn{color:var(--red);font-size:15px}
+.dtop{display:flex;justify-content:space-between;align-items:center;margin:-6px 0 10px}
+.back{color:var(--leaf);font-weight:700;text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
+.btn.sm{min-height:40px;padding:0 14px;font-size:15px}
+.hero{border-radius:18px;overflow:hidden;background:var(--leafbg);aspect-ratio:4/3;max-height:min(62vh,480px);width:100%;display:flex;align-items:center;justify-content:center}
+.hero img{width:100%;height:100%;object-fit:contain;cursor:zoom-in}
+.addph{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;height:100%;color:var(--leaf);font-weight:700;text-align:center;padding:16px}
+.addph:focus-visible{outline:3px solid var(--sun);outline-offset:-3px}
+.addph span{font-size:34px;line-height:1}
+.sides{display:flex;gap:10px;margin:10px 0 18px}
+.sides button{flex:1;display:flex;align-items:center;gap:10px;min-height:54px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:600 15px Figtree,sans-serif;padding:5px 10px 5px 5px;cursor:pointer;text-align:left}
+.sides button.on{border-color:var(--leaf);box-shadow:inset 0 0 0 1px var(--leaf)}
+.mini{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--leafbg);flex:none;display:flex;align-items:center;justify-content:center;color:var(--leaf);font-size:22px}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0}
+.facts div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+.facts dt{font-size:13px;color:var(--mut)}.facts dd{margin:0;font-weight:700}
+@media(min-width:560px){.facts{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.sched{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:0}
+.sched dt{font-weight:700;white-space:nowrap}.sched dd{margin:0}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}.head h3{margin:0}
+.strip{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px}
+.strip img{flex:none;width:124px;height:124px;border-radius:12px;object-fit:cover;scroll-snap-align:start;background:var(--leafbg);cursor:zoom-in}
+.years{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px}
+.years button{min-height:38px;padding:0 14px;border-radius:99px;border:1.5px solid var(--line);background:none;color:var(--ink);font:600 15px Figtree,sans-serif;cursor:pointer}
+.years button.on{background:var(--leaf);border-color:var(--leaf);color:var(--bg)}
+.jentry{display:grid;grid-template-columns:58px minmax(0,1fr);gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.jdate{font-family:"Young Serif",Georgia,serif;font-size:24px;line-height:1;white-space:nowrap}.jdate small{display:block;font:600 12px Figtree,sans-serif;color:var(--mut);margin-top:4px}
+.jentry p{margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:4px}
+.pgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:zoom-in;background:var(--leafbg)}
+.link{background:none;border:0;color:var(--leaf);font:600 14px Figtree,sans-serif;padding:0 14px 0 0;cursor:pointer;min-height:40px}.link.del{color:var(--red)}
+.jform{background:var(--leafbg);border-radius:14px;padding:4px 14px 14px;margin:6px 0 10px}
+img.missing{min-height:40px}
+.viewer{position:fixed;inset:0;background:rgba(6,12,8,.95);z-index:20;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.viewer img{flex:1;min-height:0;width:100%;object-fit:contain}
+.viewer .row{justify-content:center;padding:14px}.viewer .btn.del{background:#fff;color:#b3261e;border-color:#fff}
+.pslot{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:4/3;border:2px dashed var(--line);border-radius:12px;background:var(--leafbg);color:var(--leaf);font-weight:700;cursor:pointer;overflow:hidden;text-align:center;padding:8px}
+.pslot.has{border-style:solid;padding:0}.pslot img{width:100%;height:100%;object-fit:cover}
+.pslot:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.prev{width:100%;max-height:200px;object-fit:contain;border-radius:12px;background:var(--leafbg);margin-top:10px}
+</style>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js" defer></script>
+</head>
+<body>
+<header>
+  <img src="icon.svg" width="30" height="30" alt="" style="border-radius:8px">
+  <h1>Seed Packet Planner</h1>
+  <span id="sync" style="margin-left:auto;font-size:13px;font-weight:600;color:var(--mut);white-space:nowrap"></span>
+</header>
+<main>
+<section class="view" id="v-scan">
+  <h2>Scan a seed packet</h2>
+  <p class="lead">Point the camera at the barcode on the back of the packet.</p>
+  <div class="cam" id="cam">
+    <video id="video" playsinline muted></video>
+    <div class="idle" id="camIdle">
+      <div class="bars" aria-hidden="true"><i style="width:5px"></i><i style="width:2px"></i><i style="width:7px"></i><i style="width:3px"></i><i style="width:2px"></i><i style="width:6px"></i><i style="width:2px"></i><i style="width:4px"></i><i style="width:7px"></i><i style="width:2px"></i><i style="width:3px"></i><i style="width:6px"></i><i style="width:2px"></i><i style="width:5px"></i></div>
+      <button class="btn sun" id="startCam">Start scanner</button>
+      <span id="camMsg" style="font-size:14px;opacity:.85"></span>
+    </div>
+    <div class="ret" id="ret" hidden></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn alt" id="stopCam" hidden>Stop scanner</button>
+    <button class="btn alt" id="snapBtn">Photograph the packet instead</button>
+  </div>
+  <input type="file" id="photo" accept="image/*" capture="environment" hidden>
+  <div id="scanOut"></div>
+  <div class="card">
+    <h3>Type it in</h3>
+    <label for="typed">Plant or variety</label>
+    <input id="typed" list="cropList" placeholder="e.g. Cherokee Purple tomato" autocomplete="off">
+    <label for="site">Seed company</label>
+    <select id="site"><option value="">Any of my seed companies</option><option value="bakercreek">Baker Creek (rareseeds.com)</option><option value="eden">Eden Brothers</option><option value="burpee">Burpee</option><option value="johnnys">Johnny's Selected Seeds</option><option value="victory">Victory Seeds</option></select>
+    <p class="hint">Also used when you scan a barcode. Pick the company to get a faster, more accurate match.</p>
+    <datalist id="cropList"></datalist>
+    <div class="row" style="margin-top:12px"><button class="btn" id="typedGo">Look it up</button></div>
+  </div>
+</section>
+
+<section class="view" id="v-seeds">
+  <h2>My seeds</h2>
+  <p class="lead" id="seedCount"></p>
+  <input id="q" type="search" placeholder="Search your seeds" aria-label="Search your seeds">
+  <div id="seedList"></div>
+</section>
+
+<section class="view" id="v-detail"><div id="detail"></div></section>
+
+<section class="view" id="v-calendar">
+  <h2>Planting calendar</h2>
+  <p class="lead" id="calLead"></p>
+  <div class="row"><button class="btn" id="icsSave">Add all to my calendar</button></div>
+  <p class="hint" id="icsMsg">Downloads a calendar file (.ics). Open it on your phone or import it into Google, Apple or Outlook Calendar. Each date has a 9 a.m. reminder.</p>
+  <div id="cal"></div>
+</section>
+
+<section class="view" id="v-garden">
+  <h2>Your garden</h2>
+  <p class="lead">Every date is counted from your average frost dates.</p>
+  <div class="card">
+    <label for="zip">ZIP code</label>
+    <div class="row"><input id="zip" inputmode="numeric" maxlength="5" style="flex:1 1 140px" placeholder="60601"><button class="btn alt" id="zipGo">Estimate frost dates</button></div>
+    <p class="hint" id="zipMsg">Estimates use Claude (API key below). Your county extension office has the most accurate dates.</p>
+    <div class="g2">
+      <div><label for="lf">Last spring frost</label><input id="lf" type="date"></div>
+      <div><label for="ff">First fall frost</label><input id="ff" type="date"></div>
+    </div>
+    <p class="hint">The year in these dates sets which season the calendar plans.</p>
+    <div class="row" style="margin-top:14px"><button class="btn" id="saveSet">Save</button><span id="setMsg" class="hint"></span></div>
+  </div>
+  <div class="card">
+    <h3>Claude packet reading (optional)</h3>
+    <p style="margin:0">With an Anthropic API key, Claude reads packet photos and fills in the variety, spacing and timing. Get a key at console.anthropic.com. Without one, the app uses the barcode database and its built-in list of 37 plants.</p>
+    <label for="key">API key</label>
+    <input id="key" type="password" autocomplete="off" placeholder="sk-ant-…">
+    <div class="row" style="margin-top:12px"><button class="btn" id="keySave">Save key</button><button class="btn alt" id="keyDel">Remove</button></div>
+    <p class="hint" id="keyMsg">The key stays in this browser only.</p>
+  </div>
+  <div class="card">
+    <h3>Backup and move devices</h3>
+    <p style="margin:0">Your catalog is saved in this browser. To move it to your phone or PC, save a backup here and open it on the other device.</p>
+    <div class="row" style="margin-top:12px"><button class="btn alt" id="exp">Save backup</button><button class="btn alt" id="impBtn">Restore backup</button></div>
+    <input type="file" id="imp" accept="application/json,.json" hidden>
+    <p class="hint" id="bkMsg"></p>
+  </div>
+</section>
+</main>
+
+<div class="viewer" id="viewer" hidden role="dialog" aria-label="Photo">
+  <img id="vImg" alt="">
+  <div class="row"><button class="btn sun" id="vClose">Close</button><button class="btn del" id="vDel">Delete photo</button></div>
+</div>
+
+<nav>
+  <a href="#scan" data-v="scan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 8v8M11 8v8M14 8v8M17 8v8"/></svg>Scan</a>
+  <a href="#seeds" data-v="seeds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21v-9M12 13c-5 0-7-3-7-8 5 0 7 3 7 8zM12 11c0-4 3-7 7-7 0 4-3 7-7 7z"/></svg>Seeds</a>
+  <a href="#calendar" data-v="calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
+  <a href="#garden" data-v="garden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Garden</a>
+</nav>
+
+<script>
+{
+// Typical timing in weeks relative to the last spring frost (negative = before). Packet instructions win.
+const CROPS=[
+["Tomato","vegetable",7,2,null,75,7,"Full sun",24],["Pepper","vegetable",9,2,null,75,10,"Full sun",18],["Eggplant","vegetable",9,3,null,75,10,"Full sun",24],
+["Broccoli","vegetable",7,-2,null,65,7,"Full sun",18],["Cabbage","vegetable",7,-3,null,70,7,"Full sun",18],["Cauliflower","vegetable",6,-1,null,65,8,"Full sun",18],
+["Kale","vegetable",6,-3,-4,55,7,"Sun to part shade",12],["Lettuce","vegetable",6,-2,-4,45,7,"Sun to part shade",8],["Spinach","vegetable",null,null,-6,40,8,"Sun to part shade",4],
+["Pea","vegetable",null,null,-6,60,10,"Full sun",2],["Radish","vegetable",null,null,-4,25,5,"Full sun",2],["Carrot","vegetable",null,null,-3,70,14,"Full sun",2],
+["Beet","vegetable",null,null,-2,55,8,"Full sun",3],["Swiss chard","vegetable",null,null,-2,55,8,"Sun to part shade",8],["Onion","vegetable",10,-4,null,100,10,"Full sun",4],
+["Bean","vegetable",null,null,1,55,8,"Full sun",4],["Cucumber","vegetable",3,2,2,55,7,"Full sun",12],["Zucchini","vegetable",null,null,2,50,7,"Full sun",36],
+["Squash","vegetable",null,null,2,90,7,"Full sun",36],["Pumpkin","vegetable",null,null,2,100,7,"Full sun",60],["Melon","fruit",3,2,null,85,7,"Full sun",36],
+["Watermelon","fruit",3,2,null,85,8,"Full sun",48],["Corn","vegetable",null,null,1,75,7,"Full sun",10],["Basil","herb",6,2,null,60,7,"Full sun",10],
+["Cilantro","herb",null,null,-2,50,10,"Sun to part shade",6],["Parsley","herb",9,-2,null,75,21,"Sun to part shade",8],["Dill","herb",null,null,0,50,14,"Full sun",12],
+["Marigold","flower",6,1,null,50,7,"Full sun",10],["Zinnia","flower",4,1,1,60,7,"Full sun",12],["Sunflower","flower",null,null,1,80,10,"Full sun",18],
+["Cosmos","flower",null,null,1,70,7,"Full sun",12],["Nasturtium","flower",null,null,1,55,10,"Full sun",10],["Sweet pea","flower",null,null,-6,80,14,"Full sun",6],
+["Petunia","flower",10,2,null,90,10,"Full sun",10],["Snapdragon","flower",8,-2,null,90,10,"Full sun",8],["Calendula","flower",null,null,-2,55,10,"Full sun",10],
+["Morning glory","flower",null,null,1,90,7,"Full sun",8]
+].map(([n,c,i,t,d,dtm,g,sun,sp])=>({name:n,category:c,indoorWeeks:i,transplantWeeks:t,directWeeks:d,dtm,germDays:g,sun,spacingIn:sp}));
+const ALIASES={chard:'Swiss chard',courgette:'Zucchini','green bean':'Bean','snap pea':'Pea','snow pea':'Pea',cantaloupe:'Melon','sweet corn':'Corn'};
+function matchCrop(text){
+  if(!text)return null;const t=' '+text.toLowerCase().replace(/[^a-z ]/g,' ')+' ';let best=null;
+  for(const c of CROPS){const n=c.name.toLowerCase();if(new RegExp(`\\b${n}(e?s)?\\b`).test(t)&&(!best||n.length>best.name.length))best=c}
+  for(const[a,n]of Object.entries(ALIASES))if(t.includes(' '+a)&&(!best||a.length>best.name.length))best=CROPS.find(c=>c.name===n);
+  return best;
+}
+
+const MODEL='claude-sonnet-5-5';
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>v===''||v==null||isNaN(+v)?null:+v;
+const today=new Date();today.setHours(0,0,0,0);
+const yr=today.getFullYear()+(today.getMonth()>5?1:0);
+const LS='seedPlanner.v1',LSK='seedPlanner.key';
+// seeds: live records. tombs: deleted markers kept until the server has them. dirty: ids changed here and not yet synced.
+let seeds=[],tombs=[],dirty=new Set(),settings={id:'settings',lf:yr+'-04-15',ff:yr+'-10-15',zip:'',set:false,updatedAt:0},apiKey='';
+let server=false,serverClaude=false,syncing=null;
+try{const o=JSON.parse(localStorage.getItem(LS)||'{}');if(o.seeds)seeds=o.seeds;if(o.tombs)tombs=o.tombs;if(o.dirty)dirty=new Set(o.dirty);
+  if(o.settings)settings={...settings,...o.settings,id:'settings'};apiKey=localStorage.getItem(LSK)||''}catch(e){}
+function persist(){try{localStorage.setItem(LS,JSON.stringify({seeds,tombs,settings,dirty:[...dirty]}))}catch(e){alert('Could not save. Your browser storage may be full.')}}
+function touch(rec){rec.updatedAt=Math.max(Date.now(),(rec.updatedAt||0)+1);dirty.add(rec.id);persist();sync()}
+
+// ---------- sync with the home server ----------
+function setSync(t,bad){const el=$('#sync');el.textContent=t;el.style.color=bad?'var(--red)':'var(--mut)'}
+function findRec(id){return id==='settings'?settings:seeds.find(s=>s.id===id)||tombs.find(s=>s.id===id)}
+function applyState(st){
+  const local=new Map([...dirty].map(id=>[id,findRec(id)]).filter(([,r])=>r));
+  const next=[],nextTombs=[];
+  for(const r of st.seeds){const mine=local.get(r.id);const use=mine&&(mine.updatedAt||0)>(r.updatedAt||0)?mine:r;(use.deleted?nextTombs:next).push(use);local.delete(r.id)}
+  for(const[id,r]of local)if(id!=='settings')(r.deleted?nextTombs:next).push(r);
+  seeds=next.sort((a,b)=>b.id.localeCompare(a.id));tombs=nextTombs.filter(t=>dirty.has(t.id));
+  if(st.settings&&(!dirty.has('settings')||(st.settings.updatedAt||0)>=(settings.updatedAt||0)))settings={...settings,...st.settings,id:'settings'};
+  serverClaude=!!st.claude;persist();render();
+}
+async function sync(){
+  if(!server)return;
+  if(syncing){syncing.again=true;return}
+  syncing={again:false};
+  const sent=[...dirty].map(findRec).filter(Boolean).map(r=>({...r}));
+  try{
+    const r=await fetch('api/sync',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({records:sent})});
+    if(!r.ok)throw new Error(r.status);
+    const st=await r.json();
+    for(const s of sent){const cur=findRec(s.id);if(!cur||(cur.updatedAt||0)<=(s.updatedAt||0))dirty.delete(s.id)}
+    applyState(st);setSync('Synced');uploadPhotos();
+  }catch(e){setSync(dirty.size?'Offline · changes will sync':'Offline',!!dirty.size)}
+  const again=syncing.again;syncing=null;if(again)sync();
+}
+async function connectServer(){
+  try{const r=await fetch('api/state',{cache:'no-store'});if(!r.ok)throw 0;const st=await r.json();if(!Array.isArray(st.seeds))throw 0;
+    server=true;applyState(st);if(dirty.size)await sync();else setSync('Synced');uploadPhotos()}
+  catch(e){if(server)setSync(dirty.size?'Offline · changes will sync':'Offline',!!dirty.size)}
+}
+addEventListener('online',()=>connectServer());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')connectServer()});
+setInterval(()=>{if(document.visibilityState==='visible')connectServer()},60000);
+$('#cropList').innerHTML=CROPS.map(c=>`<option value="${esc(c.name)}">`).join('');
+
+// ---------- photos ----------
+// Each photo is a JPEG kept on this device (IndexedDB) and uploaded to the server by id.
+// Records only hold photo ids, so the catalog stays small and syncs quickly.
+const idb=new Promise((res,rej)=>{const r=indexedDB.open('seedPlannerPhotos',1);r.onupgradeneeded=()=>r.result.createObjectStore('p');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}).catch(()=>null);
+const idbReq=async(mode,fn)=>{const d=await idb;if(!d)return null;return new Promise(r=>{try{const q=fn(d.transaction('p',mode).objectStore('p'));q.onsuccess=()=>r(q.result??null);q.onerror=()=>r(null)}catch(e){r(null)}})};
+const idbGet=k=>idbReq('readonly',st=>st.get(k)),idbPut=(k,v)=>idbReq('readwrite',st=>st.put(v,k)),idbKeys=()=>idbReq('readonly',st=>st.getAllKeys());
+const newPid=()=>'p-'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const urls=new Map();
+async function savePhoto(canvas){
+  const c=shrink(canvas,1400),id=newPid();
+  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.82));
+  await idbPut(id,{blob,uploaded:false});urls.set(id,URL.createObjectURL(blob));
+  uploadPhotos();return id;
+}
+async function fileToCanvas(f){
+  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(f)});
+  const c=shrink(img,1400);URL.revokeObjectURL(img.src);return c;
+}
+let uploading=false;
+async function uploadPhotos(){
+  if(!server||uploading)return;uploading=true;
+  try{for(const k of (await idbKeys())||[]){const rec=await idbGet(k);if(!rec||rec.uploaded)continue;
+    const r=await fetch('api/photos/'+encodeURIComponent(k),{method:'PUT',headers:{'content-type':'image/jpeg'},body:rec.blob});
+    if(!r.ok)break;await idbPut(k,{...rec,uploaded:true});}}catch(e){}
+  uploading=false;
+}
+async function photoSrc(id){
+  if(urls.has(id))return urls.get(id);
+  const rec=await idbGet(id);let u=null;
+  if(rec&&rec.blob)u=URL.createObjectURL(rec.blob);else if(server)u='api/photos/'+encodeURIComponent(id);
+  if(u)urls.set(id,u);return u;
+}
+function hydrate(root=document){
+  root.querySelectorAll('img[data-photo]:not([data-done])').forEach(async img=>{
+    img.dataset.done=1;
+    img.onerror=()=>{urls.delete(img.dataset.photo);img.removeAttribute('src');img.classList.add('missing');img.title='Photo not synced yet'};
+    const u=await photoSrc(img.dataset.photo);if(u)img.src=u;else img.classList.add('missing');
+  });
+}
+const pimg=(id,cls='',alt='')=>id&&/^p-[a-z0-9]+$/.test(id)?`<img data-photo="${id}" class="${cls}" alt="${esc(alt)}" loading="lazy">`:'';
+function pickPhotos(multiple){return new Promise(res=>{const i=document.createElement('input');i.type='file';i.accept='image/*';i.multiple=!!multiple;
+  i.onchange=()=>res([...i.files]);i.addEventListener('cancel',()=>res([]));i.click()})}
+
+// ---------- schedule ----------
+const D=s=>{const[a,b,c]=String(s).split('-').map(Number);return new Date(a,b-1,c)};
+const add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const fmt=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+const ymd=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+const COL={'Start indoors':'#7b5cd6','Harden off':'#8a8f5a','Transplant outdoors':'#1f5a32','Direct sow':'#2f8fbf','Harvest begins':'#f0a202'};
+function methodOf(s){if(s.method==='indoor'&&s.indoorWeeks!=null)return'indoor';if(s.method==='direct'&&s.directWeeks!=null)return'direct';return s.indoorWeeks!=null?'indoor':'direct'}
+const label=s=>s.variety?`${s.name} '${s.variety}'`:s.name;
+function events(s){
+  const lf=D(settings.lf),out=[];let base=null;
+  if(methodOf(s)==='indoor'&&s.indoorWeeks!=null){
+    out.push(['Start indoors',add(lf,-7*s.indoorWeeks)]);
+    if(s.transplantWeeks!=null){const t=add(lf,7*s.transplantWeeks);out.push(['Harden off',add(t,-7)],['Transplant outdoors',t]);base=t}
+  }else if(s.directWeeks!=null){base=add(lf,7*s.directWeeks);out.push(['Direct sow',base])}
+  else if(s.transplantWeeks!=null){base=add(lf,7*s.transplantWeeks);out.push(['Transplant outdoors',base])}
+  if(base&&s.dtm)out.push(['Harvest begins',add(base,+s.dtm)]);
+  return out.map(([kind,date])=>({kind,date,seed:s,title:`${kind}: ${label(s)}`}));
+}
+const allEvents=()=>seeds.flatMap(events).sort((a,b)=>a.date-b.date);
+const detail=s=>[s.sun&&`Sun: ${s.sun}`,s.spacingIn&&`Spacing: ${s.spacingIn} in`,s.depthIn&&`Depth: ${s.depthIn} in`,s.germDays&&`Sprouts in about ${s.germDays} days`,s.dtm&&`Days to maturity: ${s.dtm}`,s.notes].filter(Boolean).join('\n');
+
+// ---------- render ----------
+function render(){
+  const q=($('#q').value||'').toLowerCase();
+  const list=seeds.filter(s=>(s.name+' '+(s.variety||'')+' '+(s.brand||'')).toLowerCase().includes(q));
+  $('#seedCount').textContent=seeds.length?`${seeds.length} packet${seeds.length>1?'s':''} in your catalog`:'';
+  $('#seedList').innerHTML=list.length?list.map(s=>{
+    const nx=events(s).find(e=>e.date>=today);
+    return `<div class="card"><button class="seed" data-open="${esc(s.id)}">${s.frontPhoto?pimg(s.frontPhoto,'thumb'):s.thumb&&s.thumb.startsWith('data:image/')?`<img class="thumb" src="${esc(s.thumb)}" alt="">`:'<span class="thumb"></span>'}
+    <span><b>${esc(s.name)}${s.variety?` · ${esc(s.variety)}`:''}</b><span class="chip ${s.category==='flower'?'flower':''}">${esc(s.category||'plant')}</span>
+    <span class="next">${nx?`Next: ${esc(nx.kind.toLowerCase())}, ${fmt(nx.date)}`:'No upcoming dates'}</span></span></button></div>`}).join('')
+    :`<div class="empty">${seeds.length?'No seeds match.':'No seeds yet. Scan a packet to start your catalog.'}</div>`;
+  const ev=allEvents();
+  $('#calLead').textContent=`${ev.length} dates for ${seeds.length} packet${seeds.length===1?'':'s'}, counted from a last frost of ${fmt(D(settings.lf))}.`+(settings.set?'':' Set your frost dates on the Garden tab.');
+  let html='',mon='';
+  for(const e of ev){
+    const m=e.date.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+    if(m!==mon){html+=`<div class="month">${esc(m)}</div>`;mon=m}
+    const g=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(e.title)}&dates=${ymd(e.date)}/${ymd(add(e.date,1))}&details=${encodeURIComponent(detail(e.seed))}`;
+    html+=`<div class="ev" style="${e.date<today?'opacity:.5':''}"><div class="d">${e.date.getDate()}<small>${e.date.toLocaleDateString(undefined,{weekday:'short'})}</small></div>
+    <div><span class="dot" style="background:${COL[e.kind]||'#888'}"></span><b>${esc(e.kind)}</b><br>${esc(label(e.seed))}<br><a href="${g}" target="_blank" rel="noopener">Add to Google Calendar</a></div></div>`;
+  }
+  $('#cal').innerHTML=html||'<div class="empty">Your planting dates appear here once you add seeds.</div>';
+  $('#keyMsg').textContent=serverClaude&&!apiKey?'Claude is set up on your server for all your devices. No key needed here.':(apiKey?'Key saved in this browser.':'The key stays in this browser only.');$('#lf').value=settings.lf;$('#ff').value=settings.ff;$('#zip').value=settings.zip||'';$('#key').value=apiKey;
+  if(detailId&&location.hash==='#seed-'+detailId&&!detailBusy)renderDetail(detailId);
+  hydrate();
+}
+
+// ---------- routing ----------
+function route(){const h=location.hash.slice(1);let v=['scan','seeds','calendar','garden'].includes(h)?h:'scan';
+  if(h.startsWith('seed-')){v='detail';packetSide='front';detailYear=null;renderDetail(h.slice(5))}else detailId=null;
+  closeViewer();
+  document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===(v==='detail'?'seeds':v)));
+  if(v!=='scan')stopScan();window.scrollTo(0,0);if(server)connectServer()}
+addEventListener('hashchange',route);
+
+// ---------- live scanner ----------
+const video=$('#video');let stream=null,zx=null,loop=null,scanning=false;
+async function startScan(){
+  $('#camMsg').textContent='';
+  try{
+    if('BarcodeDetector'in window){
+      const det=new BarcodeDetector({formats:['upc_a','upc_e','ean_13','ean_8']});
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+      video.srcObject=stream;await video.play();
+      loop=setInterval(async()=>{try{const r=await det.detect(video);if(r[0])found(r[0].rawValue)}catch(e){}},250);
+    }else if(window.ZXing){
+      const hints=new Map();hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E,ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8]);
+      zx=new ZXing.BrowserMultiFormatReader(hints);
+      await zx.decodeFromConstraints({video:{facingMode:'environment'}},video,res=>{if(res)found(res.getText())});
+    }else throw new Error('nolib');
+    scanning=true;$('#camIdle').hidden=true;$('#ret').hidden=false;$('#stopCam').hidden=false;
+  }catch(e){
+    stopScan();
+    $('#camMsg').textContent=e&&e.name==='NotAllowedError'?'Camera access was blocked. Allow it in your browser settings, or photograph the packet instead.':'The scanner could not start here. Photograph the packet instead.';
+  }
+}
+function grabFrame(){if(!video.videoWidth)return null;const c=document.createElement('canvas');c.width=video.videoWidth;c.height=video.videoHeight;c.getContext('2d').drawImage(video,0,0);return c}
+function stopScan(){clearInterval(loop);loop=null;try{zx&&zx.reset()}catch(e){}zx=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;scanning=false;
+  $('#camIdle').hidden=false;$('#ret').hidden=true;$('#stopCam').hidden=true}
+async function found(code){if(!scanning)return;scanning=false;const frame=grabFrame();stopScan();if(navigator.vibrate)navigator.vibrate(60);process({code,canvas:frame})}
+$('#startCam').onclick=startScan;$('#stopCam').onclick=stopScan;
+
+// ---------- photo path ----------
+$('#snapBtn').onclick=()=>$('#photo').click();
+$('#photo').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;stopScan();
+  const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=URL.createObjectURL(f)}).catch(()=>null);
+  if(!img){$('#scanOut').innerHTML='<p class="warn">That photo could not be opened.</p>';return}
+  let code=null;
+  try{if('BarcodeDetector'in window){const r=await new BarcodeDetector({formats:['upc_a','upc_e','ean_13','ean_8']}).detect(img);if(r[0])code=r[0].rawValue}}catch(e){}
+  if(!code)try{if(window.ZXing)code=(await new ZXing.BrowserMultiFormatReader().decodeFromImageElement(img)).getText()}catch(e){}
+  process({code,canvas:shrink(img,1600)});
+};
+function shrink(src,max){const w=src.naturalWidth||src.width,h=src.naturalHeight||src.height,k=Math.min(1,max/Math.max(w,h));const c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(src,0,0,c.width,c.height);return c}
+
+// ---------- identify ----------
+const status=t=>{$('#scanOut').innerHTML=`<div class="card"><div class="status"><span class="spin"></span><span>${esc(t)}</span></div></div>`};
+async function lookupUpc(code){
+  if(server)try{const r=await fetch('api/upc?code='+encodeURIComponent(code));if(r.ok)return await r.json();if(r.status===404)return null}catch(e){}
+  try{const r=await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`);if(!r.ok)return null;
+    const j=await r.json(),it=j.items&&j.items[0];return it?{title:it.title||'',brand:it.brand||''}:null}catch(e){return null}
+}
+const canClaude=()=>!!apiKey||serverClaude;
+async function askClaude(content,max=900){
+  if(!apiKey&&serverClaude){
+    const r=await fetch('api/claude',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({content,max_tokens:max})});
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||`Claude request failed (${r.status}).`);
+    const t=(j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');const a=t.indexOf('{'),b=t.lastIndexOf('}');
+    if(a<0||b<a)throw new Error('Claude did not return packet details.');return JSON.parse(t.slice(a,b+1));
+  }
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:MODEL,max_tokens:max,messages:[{role:'user',content}]})});
+  if(!r.ok)throw new Error(r.status===401?'Your API key was not accepted.':`Claude request failed (${r.status}).`);
+  const j=await r.json(),t=(j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0||b<a)throw new Error('Claude did not return packet details.');
+  return JSON.parse(t.slice(a,b+1));
+}
+const PROMPT=({code,product,text})=>`You identify garden seed packets for a planting app.
+${code?`Barcode: ${code}.`:''} ${product?`A UPC database lists this product as: "${product.title}" (${product.brand}).`:''} ${text?`The user typed: "${text}".`:''}
+Read the packet in the photo if there is one. Use what the packet says; fill gaps with standard US seed-packet guidance for this plant.
+Answer with JSON only:
+{"name":"common plant name, e.g. Tomato","variety":"variety or empty","brand":"seed company or empty","category":"vegetable|flower|herb|fruit","sun":"short phrase","spacingIn":number|null,"depthIn":number|null,"germDays":number|null,"dtm":days to maturity|null,"indoorWeeks":weeks BEFORE last frost to start indoors (positive) or null,"transplantWeeks":weeks relative to last frost to transplant (negative = before) or null,"directWeeks":weeks relative to last frost to sow outdoors or null,"notes":"one or two short growing tips"}
+If nothing identifies a plant, answer {"error":"what you see"}.`;
+async function process({code,canvas,text}){
+  const dup=code&&seeds.find(s=>s.barcode===code);
+  if(dup){$('#scanOut').innerHTML='';location.hash='#seed-'+dup.id;return}
+  status(code?`Barcode ${code}. Looking it up on your seed companies' sites…`:`Looking up "${text}" on your seed companies' sites…`);
+  let product=null,web=null,cands=[];
+  if(server){
+    try{const r=await fetch('api/lookup?'+new URLSearchParams({q:text||'',code:code||'',site:$('#site').value}));
+      const j=await r.json();web=j.result||null;cands=j.candidates||[];product=j.product||null}catch(e){}
+  }
+  if(!product&&code&&!web)product=await lookupUpc(code);
+  const lbl=product?product.title:text||'';
+  const thumb=canvas?shrink(canvas,160).toDataURL('image/jpeg',.7):'';
+  const crop=matchCrop(lbl);
+  let seed={...(crop||{name:text||'',category:'vegetable'}),brand:product?product.brand:'',variety:'',notes:product?product.title:''},msg;
+  if(web){seed=webSeed(web);msg=webMsg(web)}
+  else if(canClaude()){
+    try{
+      const content=[];
+      if(canvas){const b64=shrink(canvas,1200).toDataURL('image/jpeg',.8).split(',')[1];content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}})}
+      content.push({type:'text',text:PROMPT({code,product,text})});
+      const v=await askClaude(content);
+      if(v.error)msg=`Claude couldn't read it: ${v.error}`;
+      else{for(const k of['spacingIn','depthIn','germDays','dtm','indoorWeeks','transplantWeeks','directWeeks'])v[k]=num(v[k]);seed=v;msg='Claude filled this in from the packet. Fix anything that looks wrong.'}
+    }catch(e){msg=`${e.message} Used the built-in plant list instead.`}
+  }
+  if(!msg)msg=crop?'Filled in from the built-in plant list. Check the packet and adjust the timing.':(product?`The barcode is "${product.title}", but it isn't in the built-in plant list. Fill in the details from the packet.`:'Not recognized. Fill in the details from the packet.');
+  // A barcode photo shows the back of the packet; a photo with no barcode is usually the front.
+  let frontPhoto=null,backPhoto=null;
+  if(canvas)try{const pid=await savePhoto(canvas);if(code)backPhoto=pid;else frontPhoto=pid}catch(e){}
+  $('#scanOut').innerHTML='';
+  openEditor({...seed,barcode:code||'',thumb:frontPhoto?thumb:'',frontPhoto,backPhoto,id:'s-'+Date.now().toString(36)},msg,true,cands);
+}
+const WEB_KEYS=['name','variety','brand','category','sun','spacingIn','depthIn','germDays','dtm','indoorWeeks','transplantWeeks','directWeeks','method','notes','sourceUrl','sourceTitle'];
+function webSeed(w){const o={};for(const k of WEB_KEYS)if(w[k]!==undefined&&w[k]!==null&&w[k]!=='')o[k]=w[k];
+  for(const k of['spacingIn','depthIn','germDays','dtm','indoorWeeks','transplantWeeks','directWeeks'])o[k]=num(o[k]);return o}
+function webMsg(w){const miss=['dtm','depthIn','spacingIn','germDays','sun'].filter(k=>!(w.found||[]).includes(k));
+  const names={dtm:'days to maturity',depthIn:'depth',spacingIn:'spacing',germDays:'days to sprout',sun:'sun'};
+  return `Found on ${w.brand}: "${w.sourceTitle}". `+(miss.length?`The page didn't list ${miss.map(k=>names[k]).join(', ')}, so check the packet for those. `:'')+'Timing uses the page where it says, otherwise typical timing for the plant.'}
+try{$('#site').value=localStorage.getItem('seedPlanner.site')||''}catch(e){}
+$('#site').onchange=()=>{try{localStorage.setItem('seedPlanner.site',$('#site').value)}catch(e){}};
+$('#typedGo').onclick=()=>{const t=$('#typed').value.trim();if(!t)return;$('#typed').value='';process({text:t})};
+$('#typed').onkeydown=e=>{if(e.key==='Enter')$('#typedGo').click()};
+
+// ---------- editor ----------
+const isoDay=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+function openEditor(s,message,isNew,cands){
+  const host=isNew?'#scanOut':'#detail';
+  if(isNew&&location.hash!=='#scan')location.hash='#scan';
+  if(!isNew)detailBusy=true;
+  const saved=!isNew&&seeds.some(x=>x.id===s.id);const v=k=>esc(s[k]??'');
+  const both=s.indoorWeeks!=null&&s.directWeeks!=null;
+  const ph={frontPhoto:s.frontPhoto||null,backPhoto:s.backPhoto||null,thumb:s.thumb||''};
+  const slot=k=>ph[k]?pimg(ph[k],'',k==='frontPhoto'?'Front of packet':'Back of packet'):`<span>+ Add ${k==='frontPhoto'?'front':'back'}</span>`;
+  $(host).innerHTML=`<div class="card" id="ed">
+  <h3>${saved?'Edit seed':'Check the details'}</h3>${message?`<p class="hint">${esc(message)}</p>`:''}
+  ${s.sourceUrl&&/^https:\/\//.test(s.sourceUrl)?`<p class="hint"><a href="${esc(s.sourceUrl)}" target="_blank" rel="noopener" style="color:var(--leaf);font-weight:600">Open the product page ↗</a></p>`:''}
+  ${(cands||[]).length>1||((cands||[]).length===1&&cands[0].url!==s.sourceUrl)?`<label for="f-alt">Not the right one?</label><select id="f-alt"><option value="">Other matches (${cands.filter(c=>c.url!==s.sourceUrl).length})</option>${cands.filter(c=>c.url!==s.sourceUrl).map(c=>`<option value="${esc(c.url)}" data-site="${esc(c.site)}">${esc(c.title)} · ${esc(c.siteName)}</option>`).join('')}</select>`:''}
+  <div class="g2">${['frontPhoto','backPhoto'].map(k=>`<div><label>${k==='frontPhoto'?'Front of packet':'Back of packet'}</label><button type="button" class="pslot ${ph[k]?'has':''}" data-slot="${k}">${slot(k)}</button></div>`).join('')}</div>
+  <p class="hint">Tap a photo to take or replace it. The front is shown on the seed's page.</p>
+  <div class="g2">${[['name','Plant'],['variety','Variety'],['brand','Brand'],['sun','Sun']].map(([k,l])=>`<div><label for="f-${k}">${l}</label><input id="f-${k}" value="${v(k)}"></div>`).join('')}
+  <div><label for="f-category">Type</label><select id="f-category">${['vegetable','flower','herb','fruit'].map(c=>`<option ${s.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+  <div><label for="f-year">Packet year</label><input id="f-year" inputmode="numeric" value="${v('year')||today.getFullYear()}"></div></div>
+  <div class="g3"><div><label for="f-germDays">Sprouts (days)</label><input id="f-germDays" inputmode="numeric" value="${v('germDays')}"></div>
+  <div><label for="f-dtm">Maturity (days)</label><input id="f-dtm" inputmode="numeric" value="${v('dtm')}"></div>
+  <div><label for="f-spacingIn">Spacing (in)</label><input id="f-spacingIn" inputmode="decimal" value="${v('spacingIn')}"></div></div>
+  <div class="g3"><div><label for="f-depthIn">Depth (in)</label><input id="f-depthIn" inputmode="decimal" value="${v('depthIn')}"></div></div>
+  <div class="g3"><div><label for="f-indoorWeeks">Start indoors (wks before)</label><input id="f-indoorWeeks" value="${v('indoorWeeks')}"></div>
+  <div><label for="f-transplantWeeks">Transplant (wks ±)</label><input id="f-transplantWeeks" value="${v('transplantWeeks')}"></div>
+  <div><label for="f-directWeeks">Direct sow (wks ±)</label><input id="f-directWeeks" value="${v('directWeeks')}"></div></div>
+  <p class="hint">Weeks are counted from your last frost. Use a minus sign for weeks before it.</p>
+  ${both?`<label for="f-method">How will you plant it?</label><select id="f-method"><option value="indoor" ${methodOf(s)==='indoor'?'selected':''}>Start indoors, then transplant</option><option value="direct" ${methodOf(s)==='direct'?'selected':''}>Sow directly outside</option></select>`:''}
+  <label for="f-notes">Packet notes</label><textarea id="f-notes">${v('notes')}</textarea>
+  <div id="edPrev"></div>
+  <div class="row" style="margin-top:14px"><button class="btn" id="edSave">${saved?'Save changes':'Add to catalog'}</button><button class="btn alt" id="edCancel">Cancel</button>${saved?'<button class="btn del" id="edDel">Delete seed</button>':''}</div>
+  ${s.barcode?`<p class="hint">Barcode ${esc(s.barcode)}</p>`:''}</div>`;
+  hydrate($('#ed'));
+  if($('#f-alt'))$('#f-alt').onchange=async e=>{const u=e.target.value;if(!u)return;e.target.disabled=true;
+    try{const r=await fetch('api/lookup?'+new URLSearchParams({url:u,site:e.target.selectedOptions[0].dataset.site||''}));const j=await r.json();if(!j.result)throw 0;
+      const cur=read();const w=webSeed(j.result);
+      openEditor({...cur,...w,id:cur.id,barcode:cur.barcode,frontPhoto:ph.frontPhoto,backPhoto:ph.backPhoto,thumb:ph.thumb},webMsg(j.result),isNew,cands)}
+    catch(err){e.target.disabled=false;e.target.insertAdjacentHTML('afterend','<p class="warn">That page could not be read.</p>')}};
+  $('#ed').querySelectorAll('[data-slot]').forEach(b=>b.onclick=async()=>{
+    const [f]=await pickPhotos(false);if(!f)return;
+    b.innerHTML='<span>Saving…</span>';
+    try{const c=await fileToCanvas(f);const k=b.dataset.slot;ph[k]=await savePhoto(c);if(k==='frontPhoto')ph.thumb=shrink(c,160).toDataURL('image/jpeg',.7);
+      b.classList.add('has');b.innerHTML=slot(k);hydrate(b)}catch(e){b.innerHTML='<span>Could not read that photo</span>'}
+  });
+  const read=()=>{const o={...s,...ph};for(const k of['name','variety','brand','sun','category','notes','year'])o[k]=$('#f-'+k).value.trim();
+    for(const k of['germDays','dtm','spacingIn','depthIn','indoorWeeks','transplantWeeks','directWeeks'])o[k]=num($('#f-'+k).value);
+    if($('#f-method'))o.method=$('#f-method').value;else delete o.method;return o};
+  const prev=()=>{const ev=events(read());$('#edPrev').innerHTML=ev.length?`<div class="note"><b>Schedule</b><br>${ev.map(e=>`${esc(e.kind)}: ${fmt(e.date)}`).join('<br>')}</div>`:'<div class="note">Add a timing value to get planting dates.</div>'};
+  $('#ed').addEventListener('input',prev);prev();
+  const done=()=>{detailBusy=false};
+  $('#edSave').onclick=()=>{const o=read();if(!o.name){$('#f-name').focus();return}
+    const i=seeds.findIndex(x=>x.id===o.id);if(i<0)seeds.unshift(o);else seeds[i]=o;touch(o);done();
+    if(isNew)$('#scanOut').innerHTML='';
+    if(location.hash==='#seed-'+o.id)renderDetail(o.id);else location.hash='#seed-'+o.id;render()};
+  $('#edCancel').onclick=()=>{done();if(isNew)$('#scanOut').innerHTML='';else renderDetail(s.id)};
+  if(saved)$('#edDel').onclick=function(){if(this.dataset.sure){seeds=seeds.filter(x=>x.id!==s.id);const t={id:s.id,deleted:true,updatedAt:s.updatedAt||0};tombs.push(t);touch(t);done();location.hash='#seeds';render()}else{this.dataset.sure=1;this.textContent='Tap again to delete'}};
+  $('#ed').scrollIntoView({behavior:'smooth',block:'start'});
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(!b)return;location.hash='#seed-'+b.dataset.open});
+$('#q').oninput=render;
+
+// ---------- seed page ----------
+let detailId=null,detailBusy=false,detailYear=null,packetSide='front',jEditing=null,jPending=[];
+const findSeed=id=>seeds.find(x=>x.id===id);
+function saveSeed(s){const i=seeds.findIndex(x=>x.id===s.id);if(i>=0)seeds[i]=s;touch(s);render()}
+function renderDetail(id){
+  detailId=id;const s=findSeed(id);const el=$('#detail');
+  if(!s){el.innerHTML=`<div class="dtop"><a class="back" href="#seeds">‹ My seeds</a></div><div class="empty">This seed isn't in your catalog.</div>`;return}
+  const side=packetSide==='back'&&s.backPhoto?'back':s.frontPhoto?'front':s.backPhoto?'back':null;
+  const heroId=side==='back'?s.backPhoto:s.frontPhoto;
+  const journal=(s.journal||[]).slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  const years=[...new Set(journal.map(j=>+j.date.slice(0,4)))];
+  const thisYear=today.getFullYear();if(!years.includes(thisYear))years.push(thisYear);years.sort((a,b)=>b-a);
+  if(detailYear==null||!years.includes(detailYear))detailYear=journal.length?+journal[0].date.slice(0,4):thisYear;
+  const entries=journal.filter(j=>+j.date.slice(0,4)===detailYear);
+  const facts=[['Sun',s.sun],['Spacing',s.spacingIn!=null&&`${s.spacingIn} in`],['Depth',s.depthIn!=null&&`${s.depthIn} in`],['Sprouts in',s.germDays&&`${s.germDays} days`],
+    ['Maturity',s.dtm&&`${s.dtm} days`],['Planting',(s.indoorWeeks!=null||s.directWeeks!=null)&&(methodOf(s)==='indoor'?'Start indoors':'Sow outside')],['Brand',s.brand],['Packet year',s.year]].filter(f=>f[1]);
+  const ev=events(s);
+  const sideBtn=k=>{const pid=k==='front'?s.frontPhoto:s.backPhoto;
+    return `<button type="button" data-side="${k}" class="${side===k?'on':''}">${pid?pimg(pid,'mini'):'<span class="mini">+</span>'}${pid?(k==='front'?'Front':'Back'):`Add ${k}`}</button>`};
+  el.innerHTML=`<div class="dtop"><a class="back" href="#seeds">‹ My seeds</a><button class="btn alt sm" id="dEdit">Edit</button></div>
+  <div class="hero">${heroId?pimg(heroId,'',`${side==='back'?'Back':'Front'} of the ${label(s)} packet`).replace('<img','<img data-view="packet"'):`<button type="button" class="addph" data-addside="front"><span>+</span>Add a photo of the front of the packet</button>`}</div>
+  <div class="sides">${sideBtn('front')}${sideBtn('back')}</div>
+  <h2>${esc(s.name)}${s.variety?` <span style="color:var(--leaf)">${esc(s.variety)}</span>`:''}</h2>
+  <span class="chip ${s.category==='flower'?'flower':''}">${esc(s.category||'plant')}</span>
+  ${facts.length?`<dl class="facts">${facts.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`:''}
+  <div class="card"><h3>Schedule for ${D(settings.lf).getFullYear()}</h3>${ev.length?`<dl class="sched">${ev.map(e=>`<dt>${fmt(e.date)}</dt><dd><span class="dot" style="background:${COL[e.kind]}"></span>${esc(e.kind)}</dd>`).join('')}</dl>`:'<p class="hint">Add timing in Edit to get planting dates.</p>'}</div>
+  <div class="card"><div class="head"><h3>Plant photos</h3><button class="btn alt sm" id="addPlant">Add photos</button></div>
+  ${(s.plantPhotos||[]).length?`<div class="strip">${s.plantPhotos.slice().reverse().map(p=>pimg(p,'','Plant photo').replace('<img','<img data-view="plant"')).join('')}</div>`:'<p class="hint" style="margin:0">Photos of the growing plant, flowers and harvest go here.</p>'}</div>
+  <div class="card"><div class="head"><h3>Planting journal</h3><button class="btn sm" id="jNew">New entry</button></div>
+  <div class="years" role="tablist" aria-label="Growing year">${years.map(y=>`<button type="button" role="tab" aria-selected="${y===detailYear}" class="${y===detailYear?'on':''}" data-year="${y}">${y}</button>`).join('')}</div>
+  <div id="jForm"></div>
+  ${entries.length?entries.map(j=>{const d=D(j.date);return `<article class="jentry"><div class="jdate">${d.getDate()}<small>${esc(d.toLocaleDateString(undefined,{month:'short'}))}</small></div><div>
+    ${j.text?`<p>${esc(j.text)}</p>`:''}${(j.photos||[]).length?`<div class="pgrid">${j.photos.map(p=>pimg(p,'','Journal photo').replace('<img',`<img data-view="journal" data-entry="${esc(j.id)}"`)).join('')}</div>`:''}
+    <button class="link" data-jedit="${esc(j.id)}">Edit</button><button class="link del" data-jdel="${esc(j.id)}">Delete</button></div></article>`}).join('')
+    :`<p class="hint" style="margin:0">No entries for ${detailYear} yet. Record sowing, sprouting, transplanting, pests, harvests — anything you want to remember next season.</p>`}</div>
+  ${s.sourceUrl&&/^https:\/\//.test(s.sourceUrl)?`<p><a href="${esc(s.sourceUrl)}" target="_blank" rel="noopener" style="color:var(--leaf);font-weight:700">View on ${esc(s.brand||'the seed company site')} ↗</a></p>`:''}
+  ${s.notes?`<div class="card"><h3>Packet notes</h3><p style="margin:0;white-space:pre-wrap">${esc(s.notes)}</p></div>`:''}`;
+  hydrate(el);
+}
+function openJournalForm(s,entry){
+  detailBusy=true;jEditing=entry||null;jPending=entry?[...(entry.photos||[])]:[];
+  const defDate=entry?entry.date:(detailYear===today.getFullYear()?isoDay(today):`${detailYear}-01-01`);
+  const box=$('#jForm');
+  const pics=()=>{$('#jPics').innerHTML=jPending.map(p=>pimg(p,'','New journal photo')).join('');hydrate($('#jPics'))};
+  box.innerHTML=`<div class="jform"><label for="jDate">Date</label><input type="date" id="jDate" value="${esc(defDate)}">
+  <label for="jText">What happened</label><textarea id="jText" placeholder="e.g. 12 of 15 seeds sprouted. Moved under grow lights.">${esc(entry?entry.text:'')}</textarea>
+  <div class="pgrid" id="jPics" style="margin-top:10px"></div>
+  <div class="row" style="margin-top:10px"><button class="btn alt sm" id="jAddPh">Add photos</button></div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="jSave">${entry?'Save changes':'Save entry'}</button><button class="btn alt" id="jCancel">Cancel</button><span class="hint" id="jMsg"></span></div></div>`;
+  pics();
+  $('#jAddPh').onclick=async()=>{const files=await pickPhotos(true);if(!files.length)return;$('#jMsg').textContent='Adding photos…';
+    for(const f of files){try{jPending.push(await savePhoto(await fileToCanvas(f)));pics()}catch(e){}}$('#jMsg').textContent=''};
+  $('#jCancel').onclick=()=>{detailBusy=false;jEditing=null;renderDetail(s.id)};
+  $('#jSave').onclick=()=>{const date=$('#jDate').value,text=$('#jText').value.trim();
+    if(!date){$('#jDate').focus();return}if(!text&&!jPending.length){$('#jText').focus();return}
+    const cur=findSeed(s.id);if(!cur)return;const list=(cur.journal||[]).filter(j=>!jEditing||j.id!==jEditing.id);
+    list.push({id:jEditing?jEditing.id:'j-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),date,text,photos:jPending});
+    detailBusy=false;jEditing=null;detailYear=+date.slice(0,4);saveSeed({...cur,journal:list});renderDetail(s.id)};
+  $('#jText').focus();
+}
+$('#detail').addEventListener('click',async e=>{
+  const s=findSeed(detailId);if(!s)return;const t=e.target;
+  if(t.closest('#dEdit'))return openEditor(s,'',false);
+  const sideB=t.closest('[data-side]');
+  if(sideB){const k=sideB.dataset.side;if((k==='front'?s.frontPhoto:s.backPhoto)){packetSide=k;renderDetail(s.id)}else addPacket(s,k);return}
+  const addS=t.closest('[data-addside]');if(addS)return addPacket(s,addS.dataset.addside);
+  const yb=t.closest('[data-year]');if(yb){detailYear=+yb.dataset.year;renderDetail(s.id);return}
+  if(t.closest('#jNew'))return openJournalForm(s);
+  const je=t.closest('[data-jedit]');if(je){const en=(s.journal||[]).find(j=>j.id===je.dataset.jedit);if(en)openJournalForm(s,en);return}
+  const jd=t.closest('[data-jdel]');
+  if(jd){if(!jd.dataset.sure){jd.dataset.sure=1;jd.textContent='Tap again to delete';return}
+    saveSeed({...s,journal:(s.journal||[]).filter(j=>j.id!==jd.dataset.jdel)});renderDetail(s.id);return}
+  if(t.closest('#addPlant')){const files=await pickPhotos(true);if(!files.length)return;const btn=$('#addPlant');btn.textContent='Adding…';btn.disabled=true;
+    const ids=[];for(const f of files){try{ids.push(await savePhoto(await fileToCanvas(f)))}catch(err){}}
+    const cur=findSeed(s.id);if(cur&&ids.length)saveSeed({...cur,plantPhotos:[...(cur.plantPhotos||[]),...ids]});renderDetail(s.id);return}
+  const img=t.closest('img[data-view]');
+  if(img){const kind=img.dataset.view,pid=img.dataset.photo,entry=img.dataset.entry;
+    openViewer(pid,kind==='packet'?null:()=>{const cur=findSeed(s.id);if(!cur)return;
+      if(kind==='plant')saveSeed({...cur,plantPhotos:(cur.plantPhotos||[]).filter(p=>p!==pid)});
+      else saveSeed({...cur,journal:(cur.journal||[]).map(j=>j.id===entry?{...j,photos:(j.photos||[]).filter(p=>p!==pid)}:j)});
+      renderDetail(s.id)})}
+});
+async function addPacket(s,side){
+  const [f]=await pickPhotos(false);if(!f)return;
+  try{const c=await fileToCanvas(f);const pid=await savePhoto(c);const cur=findSeed(s.id);if(!cur)return;
+    const upd={...cur,[side==='back'?'backPhoto':'frontPhoto']:pid};if(side==='front')upd.thumb=shrink(c,160).toDataURL('image/jpeg',.7);
+    packetSide=side;saveSeed(upd);renderDetail(s.id)}catch(e){}
+}
+// full-screen photo viewer
+let vDelete=null;
+async function openViewer(pid,onDelete){vDelete=onDelete;$('#vImg').src=await photoSrc(pid)||'';$('#vDel').hidden=!onDelete;$('#vDel').textContent='Delete photo';delete $('#vDel').dataset.sure;$('#viewer').hidden=false;$('#vClose').focus()}
+function closeViewer(){$('#viewer').hidden=true;$('#vImg').removeAttribute('src');vDelete=null}
+$('#vClose').onclick=closeViewer;
+$('#vDel').onclick=function(){if(!this.dataset.sure){this.dataset.sure=1;this.textContent='Tap again to delete';return}const f=vDelete;closeViewer();f&&f()};
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#viewer').hidden)closeViewer()});
+
+// ---------- calendar file ----------
+function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+function ics(){
+  const f=s=>String(s).replace(/[\\;,]/g,m=>'\\'+m).replace(/\n/g,'\\n');
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z';
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Seed Packet Planner//EN','CALSCALE:GREGORIAN','X-WR-CALNAME:Planting schedule'];
+  for(const e of allEvents()){if(e.date<today)continue;
+    L.push('BEGIN:VEVENT',`UID:${e.seed.id}-${e.kind.replace(/\W/g,'')}@seedplanner`,`DTSTAMP:${stamp}`,`DTSTART;VALUE=DATE:${ymd(e.date)}`,`DTEND;VALUE=DATE:${ymd(add(e.date,1))}`,`SUMMARY:${f(e.title)}`,`DESCRIPTION:${f(detail(e.seed))}`,'BEGIN:VALARM','TRIGGER:PT9H','ACTION:DISPLAY',`DESCRIPTION:${f(e.title)}`,'END:VALARM','END:VEVENT')}
+  L.push('END:VCALENDAR');return L.join('\r\n');
+}
+$('#icsSave').onclick=()=>{if(!seeds.length){$('#icsMsg').textContent='Add a seed first.';return}download('planting-schedule.ics',ics(),'text/calendar');
+  $('#icsMsg').textContent='Downloaded planting-schedule.ics. Open it to add the dates. Importing it again after edits updates the same events instead of duplicating them.'};
+
+// ---------- garden ----------
+$('#saveSet').onclick=()=>{if(!$('#lf').value||!$('#ff').value)return;settings={...settings,lf:$('#lf').value,ff:$('#ff').value,zip:$('#zip').value.trim(),set:true};touch(settings);render();$('#setMsg').textContent='Saved. Your calendar is updated.'};
+$('#zipGo').onclick=async()=>{const z=$('#zip').value.trim(),m=$('#zipMsg');if(!/^\d{5}$/.test(z)){m.textContent='Enter a 5-digit ZIP code.';return}
+  if(!canClaude()){m.textContent='Estimates need an API key (below). Or enter the dates yourself.';return}
+  m.textContent='Estimating…';
+  try{const v=await askClaude([{type:'text',text:`Estimate the average (50% probability) last spring frost and first fall frost dates for US ZIP code ${z}. Answer with JSON only: {"place":"town, state","lastFrost":"MM-DD","firstFrost":"MM-DD"}`}],200);
+    if(!/^\d\d-\d\d$/.test(v.lastFrost)||!/^\d\d-\d\d$/.test(v.firstFrost))throw new Error('No estimate returned.');
+    const y=D($('#lf').value||settings.lf).getFullYear();$('#lf').value=`${y}-${v.lastFrost}`;$('#ff').value=`${y}-${v.firstFrost}`;
+    m.textContent=`Estimate for ${v.place||z}. Tap Save to use these dates.`}catch(e){m.textContent=e.message||'No estimate this time.'}};
+$('#keySave').onclick=()=>{apiKey=$('#key').value.trim();try{apiKey?localStorage.setItem(LSK,apiKey):localStorage.removeItem(LSK)}catch(e){}$('#keyMsg').textContent=apiKey?'Key saved in this browser.':'No key saved.'};
+$('#keyDel').onclick=()=>{apiKey='';$('#key').value='';try{localStorage.removeItem(LSK)}catch(e){}$('#keyMsg').textContent='Key removed.'};
+$('#exp').onclick=()=>{download(`seed-catalog-${ymd(new Date())}.json`,JSON.stringify({app:'seed-planner',version:1,seeds,settings},null,1),'application/json');$('#bkMsg').textContent='Backup saved. Open this app on your other device and tap Restore backup.'};
+$('#impBtn').onclick=()=>$('#imp').click();
+$('#imp').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const o=JSON.parse(await f.text());if(o.app!=='seed-planner'||!Array.isArray(o.seeds))throw 0;
+    const ids=new Set(seeds.map(s=>s.id));let n=0;for(const s of o.seeds)if(s&&s.id&&!s.deleted&&!ids.has(s.id)){seeds.push(s);s.updatedAt=Date.now();dirty.add(s.id);n++}
+    if(o.settings&&!settings.set){settings={...settings,...o.settings,id:'settings'};touch(settings)}persist();sync();render();$('#bkMsg').textContent=`Restored ${n} seed${n===1?'':'s'}. Seeds already here were kept.`}
+  catch(err){$('#bkMsg').textContent='That file is not a Seed Planner backup.'}};
+
+route();render();connectServer();
+if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

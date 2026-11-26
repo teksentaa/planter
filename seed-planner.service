@@ -1,0 +1,21 @@
+[Unit]
+Description=Seed Packet Planner sync server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=seedplanner
+Group=seedplanner
+WorkingDirectory=/opt/seed-planner
+EnvironmentFile=/etc/seed-planner.env
+Environment=SEED_DB=/var/lib/seed-planner/seeds.db
+ExecStart=/usr/bin/python3 /opt/seed-planner/server.py
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/seed-planner
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
